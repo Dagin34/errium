@@ -9,5 +9,7 @@ class StandardizedError:
     code: str
     message: str
     trace_id: str
+    success: bool = False
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     details: dict[str, Any] | None = None
+    exception: Exception | None = None

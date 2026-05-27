@@ -39,7 +39,7 @@ python_version = "3.11"
 strict = true
 
 [tool.coverage.run]
-source = ["packages"]
+source = ["src/errium", "src/errium_core"]
 
 [tool.hatch.build.targets.wheel]
 packages = [
