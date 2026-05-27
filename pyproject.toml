@@ -1,0 +1,61 @@
+[project]
+name = "errium"
+version = "0.1.0"
+description = "Intelligent API error normalization and exception handling infrastructure for FastAPI and beyond."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Dagmawi Napoleon Bogale" }
+]
+license = { text = "MIT" }
+dependencies = [
+    "fastapi[standard]>=0.136.3",
+    "pydantic>=2.13.4",
+    "starlette>=1.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B"
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.coverage.run]
+source = ["packages"]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/errium",
+    "src/errium_core"
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.14.1",
+    "httpx>=0.28.1",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.6",
+    "mypy>=2.1.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.15.14",
+]
