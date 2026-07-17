@@ -1,0 +1,1193 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Intelligent API error normalization and exception handling infrastructure for FastAPI, Flask, Django Ninja, and Django REST Framework.">
+      
+      
+      
+        <link rel="canonical" href="https://dagin34.github.io/errium/architecture/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../roadmap/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Architecture - Errium</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Errium" class="md-header__button md-logo" aria-label="Errium" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Errium
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Dagin34/errium" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Dagin34/errium
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../contributing/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contributing
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Errium" class="md-nav__button md-logo" aria-label="Errium" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Errium
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Dagin34/errium" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Dagin34/errium
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-goal-core-vs-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design goal: core vs. adapters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-building-blocks-errium_core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core building blocks (errium_core)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core building blocks (errium_core)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contracts-errium_corecontracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contracts (errium_core/contracts/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classification-errium_coreclassifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classification (errium_core/classifiers/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#formatting-errium_coreformatters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formatting (errium_core/formatters/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normalization-errium_corenormalizersvalidationpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normalization (errium_core/normalizers/validation.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings-errium_coreconfigsettingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings (errium_core/config/settings.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tracing-errium_coretracingtracepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracing (errium_core/tracing/trace.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-fastapi-errium" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: FastAPI (errium)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-flask-errium_flask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Flask (errium_flask)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-django-ninja-errium_ninja" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Django Ninja (errium_ninja)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-django-rest-framework-errium_drf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Django REST Framework (errium_drf)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#design-goal-core-vs-adapters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design goal: core vs. adapters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-building-blocks-errium_core" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core building blocks (errium_core)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core building blocks (errium_core)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contracts-errium_corecontracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contracts (errium_core/contracts/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classification-errium_coreclassifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classification (errium_core/classifiers/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#formatting-errium_coreformatters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formatting (errium_core/formatters/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normalization-errium_corenormalizersvalidationpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normalization (errium_core/normalizers/validation.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings-errium_coreconfigsettingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings (errium_core/config/settings.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tracing-errium_coretracingtracepy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tracing (errium_core/tracing/trace.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-fastapi-errium" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: FastAPI (errium)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-flask-errium_flask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Flask (errium_flask)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-django-ninja-errium_ninja" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Django Ninja (errium_ninja)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adapter-django-rest-framework-errium_drf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adapter: Django REST Framework (errium_drf)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Response contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-layout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing layout
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
+<p>This document describes how Errium is put together internally. It's aimed at contributors and at
+anyone building a new framework adapter.</p>
+<h2 id="design-goal-core-vs-adapters">Design goal: core vs. adapters<a class="headerlink" href="#design-goal-core-vs-adapters" title="Permanent link">&para;</a></h2>
+<p>Errium is split into a framework-agnostic core and thin, framework-specific adapters:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>src/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── errium_core/     # framework-agnostic: classification, contracts, formatting, settings
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── errium/          # FastAPI / Starlette adapter
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── errium_flask/    # Flask adapter
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── errium_ninja/    # Django Ninja adapter
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── errium_drf/      # Django REST Framework adapter
+</code></pre></div>
+<p><code>errium_core</code> never imports FastAPI, Starlette, or Flask. Where it needs to recognize a
+framework's exception type without depending on that framework (e.g. FastAPI's
+<code>RequestValidationError</code>), it does so by duck-typing — checking <code>exc.__class__.__name__</code> or
+walking <code>type(exc).__mro__</code> for a known module path — rather than importing the framework. See
+<code>errium_core/classifiers/validation.py</code> and <code>errium_core/classifiers/database.py</code> for examples.</p>
+<p>Each adapter package (<code>errium</code>, <code>errium_flask</code>, <code>errium_ninja</code>, <code>errium_drf</code>) contributes:
+- One or more <code>ExceptionClassifier</code> implementations for framework-specific exception types
+  (<code>FastAPIHTTPExceptionClassifier</code>, <code>WerkzeugHTTPExceptionClassifier</code>, ...).
+- An integration point that hooks into the framework's error-handling mechanism (a middleware for
+  FastAPI/Starlette, an extension class for Flask) and wires everything together: build a
+  <code>ClassificationEngine</code>, classify the exception, wrap it in a <code>StandardizedError</code>, format it with
+  <code>DefaultFormatter</code>, and return the framework's native JSON response type.</p>
+<p>Adding support for a new framework means adding a new <code>src/errium_&lt;framework&gt;</code> package that
+follows this same pattern and reuses <code>errium_core</code> untouched.</p>
+<h2 id="core-building-blocks-errium_core">Core building blocks (<code>errium_core</code>)<a class="headerlink" href="#core-building-blocks-errium_core" title="Permanent link">&para;</a></h2>
+<h3 id="contracts-errium_corecontracts">Contracts (<code>errium_core/contracts/</code>)<a class="headerlink" href="#contracts-errium_corecontracts" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ErrorCategory</code> (<code>categories.py</code>) — the closed set of category strings every response's <code>code</code>
+  field can take: <code>VALIDATION_ERROR</code>, <code>AUTHENTICATION_ERROR</code>, <code>AUTHORIZATION_ERROR</code>,
+  <code>RESOURCE_NOT_FOUND</code>, <code>DUPLICATE_RESOURCE</code>, <code>DATABASE_ERROR</code>, <code>INTERNAL_SERVER_ERROR</code>.</li>
+<li><code>ClassifiedError</code> (<code>classified_error.py</code>) — the minimal output of classification: <code>category</code>,
+  <code>status_code</code>, <code>message</code>.</li>
+<li><code>StandardizedError</code> (<code>error.py</code>) — the full internal representation of an error before
+  formatting: adds <code>trace_id</code>, <code>success</code>, <code>timestamp</code>, optional <code>details</code>, and the original
+  <code>exception</code> (kept around so the formatter can build debug info from it).</li>
+</ul>
+<h3 id="classification-errium_coreclassifiers">Classification (<code>errium_core/classifiers/</code>)<a class="headerlink" href="#classification-errium_coreclassifiers" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ExceptionClassifier</code> (<code>base.py</code>) — a <code>Protocol</code> every classifier implements: a <code>priority: int</code>
+  property and <code>classify(exc) -&gt; ClassifiedError | None</code>. Returning <code>None</code> means "not my
+  exception type, try the next classifier."</li>
+<li><code>ClassificationEngine</code> (<code>engine.py</code>) — holds classifiers sorted by priority (highest first,
+  ties default to 100). <code>classify(exc)</code> runs each classifier in order and returns the first
+  non-<code>None</code> result, falling back to <code>GenericExceptionClassifier</code> (always <code>INTERNAL_SERVER_ERROR</code>,
+  500) if nothing matches. On construction it always registers <code>ValidationExceptionClassifier</code>
+  (priority 150) and <code>DatabaseExceptionClassifier</code> (priority 140) — the two classifiers that are
+  genuinely framework-agnostic. Adapters register their own higher-priority, framework-specific
+  classifiers (priority 200+) on top of that.</li>
+<li><code>ValidationExceptionClassifier</code> (<code>validation.py</code>) — matches Pydantic <code>ValidationError</code> or
+  anything named <code>RequestValidationError</code>, always mapping to <code>VALIDATION_ERROR</code> / 422.</li>
+<li><code>DatabaseExceptionClassifier</code> (<code>database.py</code>) — matches SQLAlchemy exceptions by walking the
+  exception class's MRO for a <code>sqlalchemy.</code> module path (no SQLAlchemy dependency). An
+  <code>IntegrityError</code> whose message looks like a uniqueness violation (<code>unique constraint</code>,
+  <code>duplicate key</code>, <code>duplicate entry</code>, <code>already exists</code>) maps to <code>DUPLICATE_RESOURCE</code> / 409;
+  any other SQLAlchemy error maps to <code>DATABASE_ERROR</code> / 500.</li>
+<li><code>GenericExceptionClassifier</code> (<code>generic.py</code>) — the engine's fallback, not part of the
+  priority-sorted list.</li>
+<li><code>status_mapping.py</code> — <code>category_for_status_code(status_code)</code>, the shared HTTP-status-code →
+  <code>ErrorCategory</code> table (401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND, 409→DUPLICATE,
+  422→VALIDATION, else→INTERNAL). <code>FastAPIHTTPExceptionClassifier</code>,
+  <code>WerkzeugHTTPExceptionClassifier</code>, <code>NinjaHttpErrorClassifier</code>, and <code>DRFAPIExceptionClassifier</code>
+  all use this so the mapping is defined once.</li>
+</ul>
+<p>Each adapter entry point (the FastAPI middleware, the FastAPI validation handler, the Flask
+extension, the Ninja registration function, the DRF exception handler) constructs its <strong>own</strong>
+<code>ClassificationEngine</code> instance rather than sharing one. A custom classifier meant to apply
+everywhere needs to be registered on each entry point.</p>
+<h3 id="formatting-errium_coreformatters">Formatting (<code>errium_core/formatters/</code>)<a class="headerlink" href="#formatting-errium_coreformatters" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ErrorFormatter</code> (<code>base.py</code>) — a <code>Protocol</code>: <code>format(error: StandardizedError) -&gt; dict[str, Any]</code>.</li>
+<li><code>DefaultFormatter</code> (<code>default.py</code>) — the only implementation. Produces the response body:
+  <code>success</code>, <code>status_code</code>, <code>code</code>, <code>message</code>, <code>trace_id</code>, <code>timestamp</code>, <code>details</code>. Reads
+  <code>get_settings().debug</code>:</li>
+<li>In production (<code>debug=False</code>), any <code>status_code &gt;= 500</code> has its <code>code</code>/<code>message</code> sanitized to
+    a generic <code>INTERNAL_SERVER_ERROR</code> / "An unexpected error occurred." regardless of what the
+    classifier produced, so internals never leak to clients.</li>
+<li>In debug mode (<code>debug=True</code>), a <code>debug</code> block is added with the exception class name, its
+    message, a full formatted stack trace, and a short list of contextual hints keyed off the
+    status code (e.g. "Check the 'details' field..." for 422).</li>
+</ul>
+<h3 id="normalization-errium_corenormalizersvalidationpy">Normalization (<code>errium_core/normalizers/validation.py</code>)<a class="headerlink" href="#normalization-errium_corenormalizersvalidationpy" title="Permanent link">&para;</a></h3>
+<p><code>ValidationNormalizer.normalize(errors)</code> turns a raw Pydantic/FastAPI <code>errors()</code> list (dicts with
+<code>loc</code>, <code>type</code>, <code>msg</code>) into a flat <code>{field_path: message}</code> dict:
+1. Strips a leading <code>body</code>/<code>query</code>/<code>header</code>/<code>path</code>/<code>formData</code> location segment.
+2. Looks up a human-readable message template by error <code>type</code>, then by <code>msg</code> (exact match, then
+   substring match against known markers), falling back to the raw message if nothing matches.
+3. Formats <code>{field_name}</code> placeholders (e.g. <code>password</code> → "Password") and normalizes punctuation
+   (capitalized start, trailing period).</p>
+<p>Custom field-message mappings can be injected via <code>ValidationNormalizer(custom_mappings={...})</code>.
+The FastAPI validation handler, the Flask extension, and the Django Ninja adapter all use this to
+turn a raw pydantic <code>ValidationError</code>/<code>RequestValidationError</code>/Ninja <code>ValidationError</code> into the
+beautified <code>details</code> dict. The DRF adapter does <strong>not</strong> use this — DRF's <code>ValidationError.detail</code>
+is a different shape (a recursive tree of already human-readable <code>ErrorDetail</code> strings, not
+<code>loc</code>/<code>type</code>/<code>msg</code> dicts needing a message-template lookup) — see <code>errium_drf/normalizers.py</code>
+below.</p>
+<h3 id="settings-errium_coreconfigsettingspy">Settings (<code>errium_core/config/settings.py</code>)<a class="headerlink" href="#settings-errium_coreconfigsettingspy" title="Permanent link">&para;</a></h3>
+<p><code>ErriumSettings(debug: bool)</code> is a process-global singleton, sourced from the <code>ERRIUM_DEBUG</code>
+env var at import time (<code>"true"</code>/<code>"1"</code>/<code>"yes"</code>, case-insensitive). <code>get_settings()</code> /
+<code>set_settings()</code> read and replace it. Tests mutate this directly via <code>set_settings(...)</code>; because
+it's a module-level singleton, tests that rely on a specific debug/production mode should set it
+explicitly rather than assuming a default.</p>
+<h3 id="tracing-errium_coretracingtracepy">Tracing (<code>errium_core/tracing/trace.py</code>)<a class="headerlink" href="#tracing-errium_coretracingtracepy" title="Permanent link">&para;</a></h3>
+<p><code>generate_trace_id()</code> returns a fresh <code>uuid4()</code> string per error, used to correlate the
+client-facing response with server-side logs.</p>
+<h2 id="adapter-fastapi-errium">Adapter: FastAPI (<code>errium</code>)<a class="headerlink" href="#adapter-fastapi-errium" title="Permanent link">&para;</a></h2>
+<p>Two independent entry points exist because Starlette resolves <code>RequestValidationError</code>
+differently from other exceptions:</p>
+<ol>
+<li><strong><code>ErriumMiddleware</code></strong> (<code>middleware/error_middleware.py</code>) — a Starlette <code>BaseHTTPMiddleware</code>
+   that wraps <code>call_next</code> in try/except, catching anything that escapes normal request handling
+   (uncaught exceptions and <code>HTTPException</code>s). Registers <code>FastAPIHTTPExceptionClassifier</code>
+   (priority 200) and <code>FastAPIValidationErrorClassifier</code> (priority 210).</li>
+<li><strong><code>validation_exception_handler</code></strong> (<code>handlers/validation_handler.py</code>) — registered separately
+   via <code>app.add_exception_handler(RequestValidationError, ...)</code>, because FastAPI resolves
+   <code>RequestValidationError</code> through its own exception-handler mechanism rather than letting it
+   propagate through middleware. It builds its own <code>ClassificationEngine</code>, classifies the error,
+   and additionally runs <code>ValidationNormalizer</code> on <code>exc.errors()</code> to produce beautified <code>details</code>.</li>
+</ol>
+<p><code>errium/classifiers.py</code> holds <code>FastAPIHTTPExceptionClassifier</code> (matches
+<code>fastapi.HTTPException</code> / <code>starlette.exceptions.HTTPException</code>, maps status code via
+<code>category_for_status_code</code>) and <code>FastAPIValidationErrorClassifier</code> (matches
+<code>RequestValidationError</code> specifically, at higher priority than the core's generic validation
+classifier).</p>
+<p>Both entry points converge on the same contract: build a <code>ClassifiedError</code>, wrap it in a
+<code>StandardizedError</code>, format with <code>DefaultFormatter</code>, return as a <code>fastapi.responses.JSONResponse</code>.</p>
+<h2 id="adapter-flask-errium_flask">Adapter: Flask (<code>errium_flask</code>)<a class="headerlink" href="#adapter-flask-errium_flask" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>WerkzeugHTTPExceptionClassifier</code></strong> (<code>classifiers.py</code>) — matches <code>werkzeug.exceptions.HTTPException</code>
+  (what <code>flask.abort()</code> raises), maps its <code>.code</code> via <code>category_for_status_code</code>, uses
+  <code>.description</code> as the message.</li>
+<li><strong><code>ErriumFlask</code></strong> (<code>extension.py</code>) — a Flask extension following the standard
+  <code>init_app(app)</code> pattern (works with <code>ErriumFlask(app)</code> directly or the app-factory pattern via
+  <code>ErriumFlask().init_app(app)</code>). It registers a single catch-all handler via
+  <code>app.register_error_handler(Exception, ...)</code>. Flask dispatches both <code>HTTPException</code>s (e.g. from
+  <code>abort()</code>) and unhandled generic exceptions to a registered <code>Exception</code> handler when no more
+  specific handler exists, so one registration is sufficient — unlike the FastAPI adapter, Flask
+  doesn't need a second, separately-registered handler for validation errors.</li>
+<li>The handler classifies the exception, and if it's a pydantic <code>ValidationError</code> (there's no
+  Flask-native request-validation exception type — this covers the common case of validating a
+  request body with a Pydantic model by hand inside a view), runs it through
+  <code>ValidationNormalizer</code> for the same beautified <code>details</code> the FastAPI adapter produces.</li>
+<li>Response is returned as <code>(jsonify(...), status_code)</code>, Flask's standard
+  <code>(body, status_code)</code> response tuple form.</li>
+</ul>
+<h2 id="adapter-django-ninja-errium_ninja">Adapter: Django Ninja (<code>errium_ninja</code>)<a class="headerlink" href="#adapter-django-ninja-errium_ninja" title="Permanent link">&para;</a></h2>
+<p>Django Ninja is the closest architectural match to FastAPI: it's Pydantic-native, and its request
+validation errors carry the same <code>loc</code>/<code>type</code>/<code>msg</code> shape FastAPI's do. The adapter follows the
+same registration style Ninja itself uses — decorators on a <code>NinjaAPI</code> instance — rather than a
+Flask-style extension class:</p>
+<ul>
+<li><strong><code>register_errium(api: NinjaAPI)</code></strong> (<code>extension.py</code>) — the sole entry point. It builds a
+  <code>ClassificationEngine</code>, registers <code>NinjaValidationErrorClassifier</code>, <code>NinjaHttpErrorClassifier</code>,
+  and <code>DjangoHttp404Classifier</code>, then registers one shared handler function against
+  <code>ninja.errors.ValidationError</code>, <code>ninja.errors.HttpError</code>, <code>django.http.Http404</code>, and the base
+  <code>Exception</code> via <code>api.exception_handler(...)</code>. This <strong>overrides Ninja's own built-in default
+  handlers</strong> for those same exception types (Ninja registers defaults for all four when a
+  <code>NinjaAPI</code> is constructed) — notably, Ninja's default <code>Exception</code> handler re-raises when
+  <code>django.conf.settings.DEBUG</code> is <code>False</code> ("let django deal with it"), which would bypass
+  Errium's JSON contract entirely in production. <code>register_errium</code> always returns a standardized
+  response instead, deferring the debug/production decision to Errium's own <code>ERRIUM_DEBUG</code>
+  setting rather than Django's <code>DEBUG</code>.</li>
+<li><strong><code>classifiers.py</code></strong>:</li>
+<li><code>NinjaValidationErrorClassifier</code> (priority 210) — matches <code>ninja.errors.ValidationError</code>.</li>
+<li><code>NinjaHttpErrorClassifier</code> (priority 200) — matches <code>ninja.errors.HttpError</code>, which also
+    covers its subclasses <code>AuthenticationError</code>, <code>AuthorizationError</code>, and <code>Throttled</code> via
+    <code>isinstance</code>. Maps <code>exc.status_code</code> through <code>category_for_status_code</code>.</li>
+<li><code>DjangoHttp404Classifier</code> (priority 200) — matches Django's own <code>Http404</code> (e.g. from
+    <code>get_object_or_404</code>), which isn't an <code>HttpError</code> subclass and needs its own classifier.</li>
+<li><strong>Ninja's <code>loc</code> quirk</strong>: when a single Pydantic <code>Schema</code> is used as a body/form parameter (the
+  idiomatic pattern — <code>def view(request, payload: SomeSchema)</code>), Ninja wraps validation errors
+  behind a synthetic segment equal to the <em>endpoint's parameter name</em> (e.g.
+  <code>("body", "payload", "password")</code>), instead of FastAPI's flat <code>("body", "password")</code>. Query,
+  path, and header params don't get this wrapper — Ninja already flattens those. Left alone, this
+  would leak the arbitrary parameter name into the <code>details</code> dict's keys and break contract parity
+  with the other adapters. <code>extension.py</code>'s <code>_flatten_ninja_errors()</code> strips that one synthetic
+  segment (for <code>body</code>/<code>form</code> locations only) before handing errors to <code>ValidationNormalizer</code>, so
+  <code>details</code> keys always match what FastAPI/Flask would produce for the same field.</li>
+</ul>
+<p>Because <code>NinjaAPI</code>/<code>django.http</code> can't even be imported without Django settings configured first,
+anything that touches <code>errium_ninja</code> — including its own test suite — needs
+<code>django.conf.settings.configure(...)</code> + <code>django.setup()</code> called before import. See <code>tests/conftest.py</code>.</p>
+<h2 id="adapter-django-rest-framework-errium_drf">Adapter: Django REST Framework (<code>errium_drf</code>)<a class="headerlink" href="#adapter-django-rest-framework-errium_drf" title="Permanent link">&para;</a></h2>
+<p>DRF hooks in through a single settings-driven function rather than a decorator or extension
+object:</p>
+<ul>
+<li><strong><code>errium_exception_handler(exc, context)</code></strong> (<code>handler.py</code>) — point
+  <code>REST_FRAMEWORK["EXCEPTION_HANDLER"]</code> at this function's dotted path (or import and assign it
+  directly). It builds a module-level <code>ClassificationEngine</code> once (registering
+  <code>DRFValidationErrorClassifier</code>, <code>DRFAPIExceptionClassifier</code>, <code>DjangoHttp404Classifier</code>, and
+  <code>DjangoPermissionDeniedClassifier</code>), classifies, and returns a <code>rest_framework.response.Response</code>
+  built from <code>DefaultFormatter.format(...)</code>.</li>
+<li><strong>Full catch-everything coverage, unlike the DRF default</strong>: <code>APIView.dispatch()</code> wraps every
+  view call in a broad <code>except Exception</code>, routing it through <code>handle_exception()</code> -&gt;
+  <code>exception_handler(exc, context)</code>. DRF's own default <code>exception_handler</code>
+  (<code>rest_framework.views.exception_handler</code>) deliberately returns <code>None</code> for anything that isn't
+  <code>APIException</code>/<code>Http404</code>/<code>PermissionDenied</code>, which makes <code>handle_exception</code> re-raise — falling
+  through to Django's plain, non-JSON 500 handling. <code>errium_exception_handler</code> never returns
+  <code>None</code>: the <code>ClassificationEngine</code>'s <code>GenericExceptionClassifier</code> fallback catches everything
+  else, so every exception raised inside a DRF view (function-based via <code>@api_view</code>, or
+  class-based via <code>APIView</code>/viewsets — both go through the same <code>dispatch()</code>) gets Errium's
+  standardized JSON response. (Earlier planning for this adapter assumed a separate Django
+  middleware would be needed for full parity — that turned out to be unnecessary once
+  <code>dispatch()</code>'s exception-handling was traced through; the settings hook alone is sufficient.)</li>
+<li><strong><code>classifiers.py</code></strong>:</li>
+<li><code>DRFValidationErrorClassifier</code> (priority 210) — matches <code>rest_framework.exceptions.ValidationError</code>.
+    Deliberately keeps DRF's own status code (<code>exc.status_code</code>, 400 by default) instead of
+    forcing 422 like the other adapters — 400 is DRF's established convention, and remapping it
+    would surprise existing DRF API consumers.</li>
+<li><code>DRFAPIExceptionClassifier</code> (priority 200) — matches the general
+    <code>rest_framework.exceptions.APIException</code> family (<code>NotFound</code>, <code>PermissionDenied</code>,
+    <code>AuthenticationFailed</code>, <code>Throttled</code>, etc.), maps <code>exc.status_code</code> via
+    <code>category_for_status_code</code>, uses <code>str(exc.detail)</code> as the message.</li>
+<li><code>DjangoHttp404Classifier</code> / <code>DjangoPermissionDeniedClassifier</code> (priority 200) — cover Django's
+    own <code>Http404</code> and <code>django.core.exceptions.PermissionDenied</code> (distinct from DRF's own
+    <code>PermissionDenied</code> <code>APIException</code>), matching what DRF's default handler special-cases too.</li>
+<li><strong><code>normalizers.py</code></strong>: <code>flatten_drf_errors(detail)</code> recursively flattens DRF's
+  <code>ValidationError.detail</code> tree (dicts for nested serializer fields, lists of <code>ErrorDetail</code> for
+  one field's messages or per-item errors on a <code>many=True</code> serializer) into the same flat
+  <code>{field_path: message}</code> shape the other adapters produce — no template-mapping needed since
+  DRF's <code>ErrorDetail</code> strings are already human-readable. Multiple messages for one field are
+  joined with a space; non-field errors (a bare list with no dict wrapper) land under
+  <code>"non_field_errors"</code>.</li>
+<li><strong>Auth/throttle headers</strong>: <code>APIView.handle_exception</code> sets <code>exc.auth_header</code> (for
+  <code>NotAuthenticated</code>/<code>AuthenticationFailed</code>, when an authenticator is configured) and <code>exc.wait</code>
+  (for <code>Throttled</code>) on the exception <em>before</em> calling the exception handler.
+  <code>errium_exception_handler</code> reads those and sets <code>WWW-Authenticate</code>/<code>Retry-After</code> response
+  headers, mirroring what DRF's own default handler does — otherwise a 401 challenge response
+  would be missing the header clients rely on to know how to authenticate.</li>
+</ul>
+<h2 id="response-contract">Response contract<a class="headerlink" href="#response-contract" title="Permanent link">&para;</a></h2>
+<p>Every adapter produces the same JSON shape:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;status_code&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">422</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">&quot;code&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;VALIDATION_ERROR&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Validation failed.&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">&quot;trace_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;87b003a8-7c15-4a6c-9c76-a05b22b109e2&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2026-05-27T12:00:00Z&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Password is required.&quot;</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">}</span>
+</code></pre></div>
+<p>With <code>ERRIUM_DEBUG=true</code>, a <code>debug</code> object is added (exception class name, message, full stack
+trace, contextual hints). See <code>DefaultFormatter</code> above for the sanitization rule that keeps this
+out of production responses.</p>
+<p>One deliberate inconsistency: the <code>status_code</code> for a validation error is 422 on FastAPI, Flask,
+and Django Ninja, but 400 on DRF — the DRF adapter preserves DRF's own established convention
+rather than forcing uniformity (see <code>DRFValidationErrorClassifier</code> above). The response <em>shape</em> is
+identical across all four adapters either way.</p>
+<h2 id="testing-layout">Testing layout<a class="headerlink" href="#testing-layout" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>tests/unit/</code> — pure unit tests against classifiers, normalizers, and the formatter, with no
+  running app.</li>
+<li><code>tests/integration/</code> — drives a real app (<code>fastapi.testclient.TestClient</code>,
+  <code>flask.Flask.test_client()</code>, <code>ninja.testing.TestClient</code>, or DRF's
+  <code>rest_framework.test.APIRequestFactory</code> against <code>@api_view</code>-decorated views) end-to-end through
+  the adapter's actual wiring, asserting on the full JSON response shape.</li>
+<li><code>tests/conftest.py</code> — configures a minimal Django settings module (including
+  <code>REST_FRAMEWORK["EXCEPTION_HANDLER"]</code> pointed at <code>errium_drf.errium_exception_handler</code>) and
+  calls <code>django.setup()</code> before test collection, so <code>errium_ninja</code> and <code>errium_drf</code> (and anything
+  else that needs Django) are importable. No-op for the FastAPI/Flask suites.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
