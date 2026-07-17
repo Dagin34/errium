@@ -14,6 +14,9 @@ dependencies = [
     "starlette>=1.1.0",
 ]
 
+[project.optional-dependencies]
+flask = ["flask>=3.0.0"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -39,17 +42,19 @@ python_version = "3.11"
 strict = true
 
 [tool.coverage.run]
-source = ["src/errium", "src/errium_core"]
+source = ["src/errium", "src/errium_core", "src/errium_flask"]
 
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/errium",
-    "src/errium_core"
+    "src/errium_core",
+    "src/errium_flask"
 ]
 
 [dependency-groups]
 dev = [
     "coverage>=7.14.1",
+    "flask>=3.0.0",
     "httpx>=0.28.1",
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.6",
