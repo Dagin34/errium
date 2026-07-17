@@ -1,4 +1,5 @@
 from errium_core.classifiers.base import ExceptionClassifier
+from errium_core.classifiers.database import DatabaseExceptionClassifier
 from errium_core.classifiers.generic import GenericExceptionClassifier
 from errium_core.classifiers.validation import ValidationExceptionClassifier
 from errium_core.contracts.classified_error import ClassifiedError
@@ -9,8 +10,9 @@ class ClassificationEngine:
         """Initialize classification engine with default and optional classifiers."""
         self._classifiers: list[ExceptionClassifier] = []
 
-        # Register default framework-agnostic validation classifier
+        # Register default framework-agnostic classifiers
         self.register(ValidationExceptionClassifier())
+        self.register(DatabaseExceptionClassifier())
 
         if classifiers:
             for classifier in classifiers:
