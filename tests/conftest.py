@@ -7,5 +7,7 @@ if not settings.configured:
         DATABASES={},
         USE_TZ=True,
         ALLOWED_HOSTS=["*"],
+        INSTALLED_APPS=["django.contrib.contenttypes", "django.contrib.auth"],
+        REST_FRAMEWORK={"EXCEPTION_HANDLER": "errium_drf.errium_exception_handler"},
     )
     django.setup()
