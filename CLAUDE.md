@@ -6,16 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Errium is a lightweight error normalization/translation library for APIs. It intercepts uncaught
 exceptions, HTTP exceptions, and request validation errors, and standardizes them into a
-consistent, frontend-safe JSON response shape. FastAPI, Flask, and Django Ninja are all supported
-today; the package is split into a framework-agnostic core plus a thin adapter per framework (see
-Architecture, and `ARCHITECTURE.md` for the full writeup).
+consistent, frontend-safe JSON response shape. FastAPI, Flask, Django Ninja, and Django REST
+Framework are all supported today; the package is split into a framework-agnostic core plus a
+thin adapter per framework (see Architecture, and `ARCHITECTURE.md` for the full writeup).
 
 ## Commands
 
 Dependency management and running things goes through `uv`.
 
 ```bash
-uv sync                       # install/sync dev dependencies into .venv (includes flask + django-ninja extras)
+uv sync                       # install/sync dev dependencies into .venv (includes flask, django-ninja, and drf extras)
 uv run pytest                 # run the full test suite
 uv run pytest --tb=short      # shorter tracebacks
 uv run pytest tests/unit/test_classification.py::test_generic_exception_fallback  # single test
@@ -25,15 +25,17 @@ uv run mypy src               # type check (strict mode; mypy needs an explicit 
 ```
 
 Tests are split into `tests/unit` and `tests/integration` (the latter drives a real app end-to-end via
-`fastapi.testclient.TestClient`, `flask.Flask.test_client()`, or `ninja.testing.TestClient`).
-`tests/conftest.py` configures a minimal Django settings module before collection — required because
-`errium_ninja` can't even be imported without Django settings configured first. `pytest-asyncio` runs
-in `auto` mode, so async tests don't need an explicit marker. CI (`.github/workflows/ci.yml`) runs
-ruff, ruff format --check, mypy, and pytest across Python 3.11/3.12 on every push/PR to `main`.
+`fastapi.testclient.TestClient`, `flask.Flask.test_client()`, `ninja.testing.TestClient`, or DRF's
+`rest_framework.test.APIRequestFactory`). `tests/conftest.py` configures a minimal Django settings
+module (including `REST_FRAMEWORK["EXCEPTION_HANDLER"]`) before collection — required because
+`errium_ninja`/`errium_drf` can't even be imported without Django settings configured first.
+`pytest-asyncio` runs in `auto` mode, so async tests don't need an explicit marker. CI
+(`.github/workflows/ci.yml`) runs ruff, ruff format --check, mypy, and pytest across Python
+3.11/3.12 on every push/PR to `main`.
 
 ## Architecture
 
-The codebase is deliberately split into four packages under `src/`:
+The codebase is deliberately split into five packages under `src/`:
 
 - **`errium_core`** — framework-agnostic. Contains the classification engine, contracts (dataclasses),
   formatters, normalizers, tracing, and settings. Nothing here imports FastAPI, Starlette, or Flask
@@ -48,10 +50,15 @@ The codebase is deliberately split into four packages under `src/`:
 - **`errium_ninja`** — the Django Ninja adapter layer: `register_errium(api)` (registered via
   Ninja's own `api.exception_handler(...)` decorator style, not a class), plus
   `NinjaValidationErrorClassifier`, `NinjaHttpErrorClassifier`, and `DjangoHttp404Classifier`.
+- **`errium_drf`** — the Django REST Framework adapter layer: `errium_exception_handler(exc,
+  context)` (a plain function pointed at from `REST_FRAMEWORK["EXCEPTION_HANDLER"]` in settings,
+  not a decorator or class), plus `DRFValidationErrorClassifier`, `DRFAPIExceptionClassifier`,
+  `DjangoHttp404Classifier`, `DjangoPermissionDeniedClassifier`, and its own
+  `flatten_drf_errors` normalizer in `normalizers.py`.
 
-When adding support for another framework (Django REST Framework is next — see `ROADMAP.md`),
-follow this same pattern: put framework-specific classifiers/handlers in a new
-`src/errium_<framework>` package and reuse `errium_core` untouched.
+When adding support for another framework (Express.js is next — see `ROADMAP.md`), follow this
+same pattern: put framework-specific classifiers/handlers in a new `src/errium_<framework>`
+package and reuse `errium_core` untouched.
 
 ### Request flow
 
@@ -85,14 +92,28 @@ handler re-raises when Django's `DEBUG` setting is off rather than returning JSO
 Before normalizing, it also strips a Ninja-specific quirk: for a single-Schema body/form param,
 Ninja's `loc` includes a synthetic segment equal to the endpoint's *parameter name* (e.g.
 `("body", "payload", "password")`) — `_flatten_ninja_errors()` drops that segment so `details`
-keys match FastAPI/Flask's flat field names instead of leaking the parameter name. `django` ships
-no type stubs, so `pyproject.toml` has a `[[tool.mypy.overrides]]` entry silencing
-`import-untyped` for `django.*` rather than pulling in `django-stubs`.
+keys match FastAPI/Flask's flat field names instead of leaking the parameter name. Neither
+`django` nor `rest_framework` ship type stubs, so `pyproject.toml` has `[[tool.mypy.overrides]]`
+entries silencing `import-untyped` for both rather than pulling in `django-stubs`.
+
+The DRF adapter (`errium_drf.handler.errium_exception_handler`) is a plain function, not a class or
+registration call — DRF resolves it via the `REST_FRAMEWORK["EXCEPTION_HANDLER"]` setting.
+`APIView.dispatch()` wraps every view call in `except Exception: self.handle_exception(exc)`,
+which calls this function; DRF's *own* default handler chooses to return `None` for anything that
+isn't `APIException`/`Http404`/`PermissionDenied`, which makes `handle_exception` re-raise into
+Django's plain 500 handling. `errium_exception_handler` never returns `None` — the
+`ClassificationEngine`'s `GenericExceptionClassifier` fallback covers everything else — so it
+achieves full catch-everything parity with the other adapters purely through the settings hook,
+no extra middleware required. Validation errors keep DRF's own `400` status code (via
+`exc.status_code`) rather than the `422` the other adapters use, since that's DRF's established
+convention. DRF's `ValidationError.detail` has a different shape than pydantic's (a tree of
+already-human-readable `ErrorDetail` strings), so `errium_drf.normalizers.flatten_drf_errors`
+does its own recursive flattening rather than reusing `ValidationNormalizer`.
 
 Note each entry point (FastAPI middleware, FastAPI validation handler, Flask extension, Ninja
-`register_errium`) constructs its own `ClassificationEngine` rather than sharing one — keep that
-in mind when registering custom classifiers, they need to be registered in every entry point they
-should apply to.
+`register_errium`, DRF's `errium_exception_handler`) constructs its own `ClassificationEngine`
+rather than sharing one — keep that in mind when registering custom classifiers, they need to be
+registered in every entry point they should apply to.
 
 ### Classification engine (`errium_core/classifiers/engine.py`)
 
@@ -104,12 +125,15 @@ should apply to.
   (Pydantic/FastAPI validation errors, and SQLAlchemy errors detected without importing SQLAlchemy).
 - Adapter-specific classifiers (`FastAPIHTTPExceptionClassifier`,
   `FastAPIValidationErrorClassifier`, `WerkzeugHTTPExceptionClassifier`,
-  `NinjaHttpErrorClassifier`, `DjangoHttp404Classifier`) use higher priorities (200+) so they win
-  over the generic classifiers when both could match. `FastAPIHTTPExceptionClassifier`,
-  `WerkzeugHTTPExceptionClassifier`, and `NinjaHttpErrorClassifier` all share the same
-  status-code → category table via `errium_core/classifiers/status_mapping.py`'s
-  `category_for_status_code()` — update that one function if the mapping needs to change, not each
-  adapter separately.
+  `NinjaHttpErrorClassifier`, `DjangoHttp404Classifier`, `DRFAPIExceptionClassifier`, ...) use
+  higher priorities (200+) so they win over the generic classifiers when both could match.
+  `FastAPIHTTPExceptionClassifier`, `WerkzeugHTTPExceptionClassifier`, `NinjaHttpErrorClassifier`,
+  and `DRFAPIExceptionClassifier` all share the same status-code → category table via
+  `errium_core/classifiers/status_mapping.py`'s `category_for_status_code()` — update that one
+  function if the mapping needs to change, not each adapter separately. Note `DjangoHttp404Classifier`
+  and `DjangoPermissionDeniedClassifier` are duplicated (not shared) between `errium_ninja` and
+  `errium_drf` — each adapter package stays self-contained and only depends on `errium_core`, never
+  on another adapter.
 - If no classifier matches, `GenericExceptionClassifier` is used as the fallback, always producing a
   500 `INTERNAL_SERVER_ERROR`.
 - A classifier's `classify()` must return `None` (not raise) when it doesn't handle a given

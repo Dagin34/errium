@@ -12,7 +12,8 @@ src/
 ├── errium_core/     # framework-agnostic: classification, contracts, formatting, settings
 ├── errium/          # FastAPI / Starlette adapter
 ├── errium_flask/    # Flask adapter
-└── errium_ninja/    # Django Ninja adapter
+├── errium_ninja/    # Django Ninja adapter
+└── errium_drf/      # Django REST Framework adapter
 ```
 
 `errium_core` never imports FastAPI, Starlette, or Flask. Where it needs to recognize a
@@ -21,7 +22,7 @@ framework's exception type without depending on that framework (e.g. FastAPI's
 walking `type(exc).__mro__` for a known module path — rather than importing the framework. See
 `errium_core/classifiers/validation.py` and `errium_core/classifiers/database.py` for examples.
 
-Each adapter package (`errium`, `errium_flask`, `errium_ninja`) contributes:
+Each adapter package (`errium`, `errium_flask`, `errium_ninja`, `errium_drf`) contributes:
 - One or more `ExceptionClassifier` implementations for framework-specific exception types
   (`FastAPIHTTPExceptionClassifier`, `WerkzeugHTTPExceptionClassifier`, ...).
 - An integration point that hooks into the framework's error-handling mechanism (a middleware for
@@ -69,13 +70,13 @@ follows this same pattern and reuses `errium_core` untouched.
 - `status_mapping.py` — `category_for_status_code(status_code)`, the shared HTTP-status-code →
   `ErrorCategory` table (401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND, 409→DUPLICATE,
   422→VALIDATION, else→INTERNAL). `FastAPIHTTPExceptionClassifier`,
-  `WerkzeugHTTPExceptionClassifier`, and `NinjaHttpErrorClassifier` all use this so the mapping is
-  defined once.
+  `WerkzeugHTTPExceptionClassifier`, `NinjaHttpErrorClassifier`, and `DRFAPIExceptionClassifier`
+  all use this so the mapping is defined once.
 
 Each adapter entry point (the FastAPI middleware, the FastAPI validation handler, the Flask
-extension, the Ninja registration function) constructs its **own** `ClassificationEngine`
-instance rather than sharing one. A custom classifier meant to apply everywhere needs to be
-registered on each entry point.
+extension, the Ninja registration function, the DRF exception handler) constructs its **own**
+`ClassificationEngine` instance rather than sharing one. A custom classifier meant to apply
+everywhere needs to be registered on each entry point.
 
 ### Formatting (`errium_core/formatters/`)
 
@@ -103,7 +104,10 @@ registered on each entry point.
 Custom field-message mappings can be injected via `ValidationNormalizer(custom_mappings={...})`.
 The FastAPI validation handler, the Flask extension, and the Django Ninja adapter all use this to
 turn a raw pydantic `ValidationError`/`RequestValidationError`/Ninja `ValidationError` into the
-beautified `details` dict.
+beautified `details` dict. The DRF adapter does **not** use this — DRF's `ValidationError.detail`
+is a different shape (a recursive tree of already human-readable `ErrorDetail` strings, not
+`loc`/`type`/`msg` dicts needing a message-template lookup) — see `errium_drf/normalizers.py`
+below.
 
 ### Settings (`errium_core/config/settings.py`)
 
@@ -200,6 +204,55 @@ Because `NinjaAPI`/`django.http` can't even be imported without Django settings 
 anything that touches `errium_ninja` — including its own test suite — needs
 `django.conf.settings.configure(...)` + `django.setup()` called before import. See `tests/conftest.py`.
 
+## Adapter: Django REST Framework (`errium_drf`)
+
+DRF hooks in through a single settings-driven function rather than a decorator or extension
+object:
+
+- **`errium_exception_handler(exc, context)`** (`handler.py`) — point
+  `REST_FRAMEWORK["EXCEPTION_HANDLER"]` at this function's dotted path (or import and assign it
+  directly). It builds a module-level `ClassificationEngine` once (registering
+  `DRFValidationErrorClassifier`, `DRFAPIExceptionClassifier`, `DjangoHttp404Classifier`, and
+  `DjangoPermissionDeniedClassifier`), classifies, and returns a `rest_framework.response.Response`
+  built from `DefaultFormatter.format(...)`.
+- **Full catch-everything coverage, unlike the DRF default**: `APIView.dispatch()` wraps every
+  view call in a broad `except Exception`, routing it through `handle_exception()` ->
+  `exception_handler(exc, context)`. DRF's own default `exception_handler`
+  (`rest_framework.views.exception_handler`) deliberately returns `None` for anything that isn't
+  `APIException`/`Http404`/`PermissionDenied`, which makes `handle_exception` re-raise — falling
+  through to Django's plain, non-JSON 500 handling. `errium_exception_handler` never returns
+  `None`: the `ClassificationEngine`'s `GenericExceptionClassifier` fallback catches everything
+  else, so every exception raised inside a DRF view (function-based via `@api_view`, or
+  class-based via `APIView`/viewsets — both go through the same `dispatch()`) gets Errium's
+  standardized JSON response. (Earlier planning for this adapter assumed a separate Django
+  middleware would be needed for full parity — that turned out to be unnecessary once
+  `dispatch()`'s exception-handling was traced through; the settings hook alone is sufficient.)
+- **`classifiers.py`**:
+  - `DRFValidationErrorClassifier` (priority 210) — matches `rest_framework.exceptions.ValidationError`.
+    Deliberately keeps DRF's own status code (`exc.status_code`, 400 by default) instead of
+    forcing 422 like the other adapters — 400 is DRF's established convention, and remapping it
+    would surprise existing DRF API consumers.
+  - `DRFAPIExceptionClassifier` (priority 200) — matches the general
+    `rest_framework.exceptions.APIException` family (`NotFound`, `PermissionDenied`,
+    `AuthenticationFailed`, `Throttled`, etc.), maps `exc.status_code` via
+    `category_for_status_code`, uses `str(exc.detail)` as the message.
+  - `DjangoHttp404Classifier` / `DjangoPermissionDeniedClassifier` (priority 200) — cover Django's
+    own `Http404` and `django.core.exceptions.PermissionDenied` (distinct from DRF's own
+    `PermissionDenied` `APIException`), matching what DRF's default handler special-cases too.
+- **`normalizers.py`**: `flatten_drf_errors(detail)` recursively flattens DRF's
+  `ValidationError.detail` tree (dicts for nested serializer fields, lists of `ErrorDetail` for
+  one field's messages or per-item errors on a `many=True` serializer) into the same flat
+  `{field_path: message}` shape the other adapters produce — no template-mapping needed since
+  DRF's `ErrorDetail` strings are already human-readable. Multiple messages for one field are
+  joined with a space; non-field errors (a bare list with no dict wrapper) land under
+  `"non_field_errors"`.
+- **Auth/throttle headers**: `APIView.handle_exception` sets `exc.auth_header` (for
+  `NotAuthenticated`/`AuthenticationFailed`, when an authenticator is configured) and `exc.wait`
+  (for `Throttled`) on the exception *before* calling the exception handler.
+  `errium_exception_handler` reads those and sets `WWW-Authenticate`/`Retry-After` response
+  headers, mirroring what DRF's own default handler does — otherwise a 401 challenge response
+  would be missing the header clients rely on to know how to authenticate.
+
 ## Response contract
 
 Every adapter produces the same JSON shape:
@@ -222,13 +275,20 @@ With `ERRIUM_DEBUG=true`, a `debug` object is added (exception class name, messa
 trace, contextual hints). See `DefaultFormatter` above for the sanitization rule that keeps this
 out of production responses.
 
+One deliberate inconsistency: the `status_code` for a validation error is 422 on FastAPI, Flask,
+and Django Ninja, but 400 on DRF — the DRF adapter preserves DRF's own established convention
+rather than forcing uniformity (see `DRFValidationErrorClassifier` above). The response *shape* is
+identical across all four adapters either way.
+
 ## Testing layout
 
-- `tests/unit/` — pure unit tests against classifiers, the normalizer, and the formatter, with no
+- `tests/unit/` — pure unit tests against classifiers, normalizers, and the formatter, with no
   running app.
-- `tests/integration/` — drives a real app (`fastapi.testclient.TestClient` /
-  `flask.Flask.test_client()` / `ninja.testing.TestClient`) end-to-end through the adapter's
-  actual wiring, asserting on the full JSON response shape.
-- `tests/conftest.py` — configures a minimal Django settings module and calls `django.setup()`
-  before test collection, so `errium_ninja` (and anything else that needs Django) is importable.
-  No-op for the FastAPI/Flask suites.
+- `tests/integration/` — drives a real app (`fastapi.testclient.TestClient`,
+  `flask.Flask.test_client()`, `ninja.testing.TestClient`, or DRF's
+  `rest_framework.test.APIRequestFactory` against `@api_view`-decorated views) end-to-end through
+  the adapter's actual wiring, asserting on the full JSON response shape.
+- `tests/conftest.py` — configures a minimal Django settings module (including
+  `REST_FRAMEWORK["EXCEPTION_HANDLER"]` pointed at `errium_drf.errium_exception_handler`) and
+  calls `django.setup()` before test collection, so `errium_ninja` and `errium_drf` (and anything
+  else that needs Django) are importable. No-op for the FastAPI/Flask suites.

@@ -103,6 +103,24 @@ register_errium(api)
 # Your endpoints go here...
 ```
 
+Django REST Framework is supported too, via the `errium[drf]` extra:
+
+```bash
+uv pip install "errium[drf]"
+```
+
+```python
+# settings.py
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "errium_drf.errium_exception_handler",
+}
+```
+
+That's it — every exception raised inside a DRF view (`APIException` family, Django's `Http404`/
+`PermissionDenied`, and any other uncaught exception) now returns Errium's standardized response.
+Note: validation errors keep DRF's own `400` status code rather than the `422` the other adapters
+use, matching DRF's established convention.
+
 ---
 
 ## 🔍 Before vs. After
@@ -146,7 +164,7 @@ register_errium(api)
 Errium is designed framework-agnostically at the core. We are planning the following integrations:
 - [x] Flask Adapter Layer
 - [x] Django Ninja Adapter Layer
-- [ ] Django REST Framework Adapter Layer
+- [x] Django REST Framework Adapter Layer
 - [ ] Express.js Adapter Layer (JavaScript port)
 - [ ] AI-Powered Developer Suggestions & Self-Healing Hints
 

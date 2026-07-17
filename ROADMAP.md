@@ -19,6 +19,15 @@ rounding out the classification coverage in the core itself.
   (which otherwise re-raise uncaught exceptions in production instead of returning JSON). Also
   strips Ninja's synthetic parameter-name wrapper from validation error locations so `details`
   keys match the other adapters.
+- **Django REST Framework adapter** (`errium_drf`) — `errium_exception_handler`, wired via
+  `REST_FRAMEWORK["EXCEPTION_HANDLER"]`, covering `ValidationError` (keeping DRF's own 400 status
+  code), the `APIException` family, Django's `Http404`, and `PermissionDenied`. Achieves full
+  catch-everything coverage — including raw uncaught exceptions — since it never returns `None`
+  the way DRF's own default handler does; this corrects an earlier assumption (below, when this
+  was still "planned") that a separate Django middleware would be needed for that. Has its own
+  `flatten_drf_errors` normalizer, since DRF's `ErrorDetail` tree shape differs from pydantic's
+  `loc`/`type`/`msg`. Also mirrors DRF's `WWW-Authenticate`/`Retry-After` header behavior for
+  auth challenges and throttling.
 - **Database error classification** — `DatabaseExceptionClassifier` maps SQLAlchemy errors to
   `DATABASE_ERROR`, and integrity errors that look like uniqueness violations to
   `DUPLICATE_RESOURCE`, without a hard SQLAlchemy dependency.
@@ -27,13 +36,6 @@ rounding out the classification coverage in the core itself.
 
 ## Planned
 
-- **Django REST Framework adapter** — hooks in via a `REST_FRAMEWORK["EXCEPTION_HANDLER"]`
-  setting function. Needs its own detail-flattening normalizer (DRF's `ErrorDetail` tree has a
-  different shape than pydantic's `loc`/`type`/`msg`) rather than reusing `ValidationNormalizer`
-  directly. Note: DRF's exception handler is only invoked for `APIException`/`Http404`/
-  `PermissionDenied` raised inside a DRF view — a raw uncaught exception falls through to
-  Django's normal 500 handling instead, so full catch-everything parity with the other adapters
-  would additionally need a plain-Django `process_exception` middleware as a safety net.
 - **Express.js adapter (JavaScript port)** — a separate package outside the Python distribution;
   would need its own port of the core contracts, not just an adapter.
 - **AI-powered developer suggestions & self-healing hints** — extending
