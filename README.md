@@ -64,6 +64,25 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 # Your endpoints go here...
 ```
 
+Flask is supported too, via the `errium[flask]` extra:
+
+```bash
+uv pip install "errium[flask]"
+```
+
+```python
+from flask import Flask
+from errium_flask import ErriumFlask
+
+app = Flask(__name__)
+
+# Registers a single catch-all error handler covering HTTP exceptions,
+# uncaught exceptions, and pydantic validation errors.
+ErriumFlask(app)
+
+# Your routes go here...
+```
+
 ---
 
 ## 🔍 Before vs. After
@@ -105,7 +124,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 ## 🗺️ Roadmap
 
 Errium is designed framework-agnostically at the core. We are planning the following integrations:
-- [ ] Flask Adapter Layer
+- [x] Flask Adapter Layer
 - [ ] Django / Ninja Adapter Layer
 - [ ] Express.js Adapter Layer (JavaScript port)
 - [ ] AI-Powered Developer Suggestions & Self-Healing Hints
+
+See `ROADMAP.md` for more detail on what's done and what's planned.
