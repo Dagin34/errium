@@ -1,5 +1,6 @@
 site_name: Errium
 site_description: Intelligent API error normalization and exception handling infrastructure for FastAPI, Flask, Django Ninja, and Django REST Framework.
+site_url: https://dagin34.github.io/errium/
 repo_name: Dagin34/errium
 repo_url: https://github.com/Dagin34/errium
 
