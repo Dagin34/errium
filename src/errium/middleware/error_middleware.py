@@ -1,5 +1,8 @@
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.types import ASGIApp
 
 from errium.classifiers import (
     FastAPIHTTPExceptionClassifier,
@@ -12,7 +15,7 @@ from errium_core.tracing.trace import generate_trace_id
 
 
 class ErriumMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app) -> None:
+    def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
 
         self.classification_engine = ClassificationEngine()
@@ -22,7 +25,9 @@ class ErriumMiddleware(BaseHTTPMiddleware):
 
         self.formatter = DefaultFormatter()
 
-    async def dispatch(self, request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         try:
             return await call_next(request)
 

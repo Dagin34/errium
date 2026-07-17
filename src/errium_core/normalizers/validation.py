@@ -1,3 +1,4 @@
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 
@@ -15,11 +16,11 @@ class ValidationNormalizer:
         if custom_mappings:
             self.mappings.update(custom_mappings)
 
-    def normalize(self, errors: list[dict[str, Any]]) -> dict[str, str]:
+    def normalize(self, errors: Sequence[Mapping[str, Any]]) -> dict[str, str]:
         """Normalize a list of validation errors into a flat field-to-message dict.
 
         Args:
-            errors: A list of validation error dicts.
+            errors: A sequence of validation error mappings.
 
         Returns:
             A flat dictionary mapping field paths to formatted messages.
