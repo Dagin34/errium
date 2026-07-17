@@ -2,6 +2,7 @@ from fastapi import HTTPException as FastAPIHTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from errium_core.classifiers.status_mapping import category_for_status_code
 from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.classified_error import ClassifiedError
 
@@ -18,20 +19,7 @@ class FastAPIHTTPExceptionClassifier:
             return None
 
         status_code = exc.status_code
-
-        # Map HTTP status codes to standard error categories
-        if status_code == 401:
-            category = ErrorCategory.AUTHENTICATION
-        elif status_code == 403:
-            category = ErrorCategory.AUTHORIZATION
-        elif status_code == 404:
-            category = ErrorCategory.NOT_FOUND
-        elif status_code == 409:
-            category = ErrorCategory.DUPLICATE
-        elif status_code == 422:
-            category = ErrorCategory.VALIDATION
-        else:
-            category = ErrorCategory.INTERNAL
+        category = category_for_status_code(status_code)
 
         detail = getattr(exc, "detail", "An unexpected error occurred.")
         message = str(detail) if detail is not None else "An unexpected error occurred."
