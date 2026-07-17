@@ -1,0 +1,42 @@
+site_name: Errium
+site_description: Intelligent API error normalization and exception handling infrastructure for FastAPI, Flask, Django Ninja, and Django REST Framework.
+repo_name: Dagin34/errium
+repo_url: https://github.com/Dagin34/errium
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Roadmap: roadmap.md
+  - Contributing: contributing.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite

@@ -22,7 +22,13 @@ uv run pytest tests/unit/test_classification.py::test_generic_exception_fallback
 uv run ruff check .           # lint
 uv run ruff format .          # format (CI uses `ruff format --check .`)
 uv run mypy src               # type check (strict mode; mypy needs an explicit target, src is what CI checks)
+uv run mkdocs serve           # preview the docs site locally
+uv run mkdocs build --strict  # build the static docs site (output: site/, gitignored); --strict fails on broken links
 ```
+
+The docs site (`mkdocs.yml`) has no independent content — `docs/*.md` are symlinks to the root
+`README.md`/`ARCHITECTURE.md`/`ROADMAP.md`/`CONTRIBUTING.md`. Edit those root files, not the
+symlinks, and the site stays in sync automatically.
 
 Tests are split into `tests/unit` and `tests/integration` (the latter drives a real app end-to-end via
 `fastapi.testclient.TestClient`, `flask.Flask.test_client()`, `ninja.testing.TestClient`, or DRF's

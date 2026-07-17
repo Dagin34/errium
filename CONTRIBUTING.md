@@ -53,6 +53,24 @@ uv run ruff check .
 
 ---
 
+## 📚 Documentation
+
+The documentation site is built with `mkdocs` + `mkdocs-material` from `mkdocs.yml`, pulling its
+pages directly from this repo's root `.md` files (`docs/*.md` are symlinks — edit the root files,
+not the symlinks).
+
+Preview it locally:
+```bash
+uv run mkdocs serve
+```
+
+Build the static site (output goes to `site/`, which is gitignored):
+```bash
+uv run mkdocs build
+```
+
+---
+
 ## 🏷️ Commit Message Conventions
 
 We adhere to the standard Angular Git commit message style:
