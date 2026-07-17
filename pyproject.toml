@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 flask = ["flask>=3.0.0"]
+ninja = ["django-ninja>=1.3.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -41,19 +42,25 @@ asyncio_mode = "auto"
 python_version = "3.11"
 strict = true
 
+[[tool.mypy.overrides]]
+module = "django.*"
+ignore_missing_imports = true
+
 [tool.coverage.run]
-source = ["src/errium", "src/errium_core", "src/errium_flask"]
+source = ["src/errium", "src/errium_core", "src/errium_flask", "src/errium_ninja"]
 
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/errium",
     "src/errium_core",
-    "src/errium_flask"
+    "src/errium_flask",
+    "src/errium_ninja"
 ]
 
 [dependency-groups]
 dev = [
     "coverage>=7.14.1",
+    "django-ninja>=1.3.0",
     "flask>=3.0.0",
     "httpx>=0.28.1",
     "mkdocs>=1.6.1",
