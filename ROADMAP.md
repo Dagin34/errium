@@ -13,6 +13,12 @@ rounding out the classification coverage in the core itself.
   exceptions, `validation_exception_handler` with beautified validation `details`.
 - **Flask adapter** (`errium_flask`) — `ErriumFlask` extension covering Werkzeug HTTP exceptions,
   generic exceptions, and beautified pydantic validation errors raised manually inside views.
+- **Django Ninja adapter** (`errium_ninja`) — `register_errium(api)` covering Ninja's
+  `ValidationError`/`HttpError` (and its `AuthenticationError`/`AuthorizationError`/`Throttled`
+  subclasses), Django's `Http404`, and generic exceptions, overriding Ninja's built-in defaults
+  (which otherwise re-raise uncaught exceptions in production instead of returning JSON). Also
+  strips Ninja's synthetic parameter-name wrapper from validation error locations so `details`
+  keys match the other adapters.
 - **Database error classification** — `DatabaseExceptionClassifier` maps SQLAlchemy errors to
   `DATABASE_ERROR`, and integrity errors that look like uniqueness violations to
   `DUPLICATE_RESOURCE`, without a hard SQLAlchemy dependency.
@@ -21,9 +27,13 @@ rounding out the classification coverage in the core itself.
 
 ## Planned
 
-- **Django / Ninja adapter layer** — same pattern as `errium_flask`: a `django.core.handlers`
-  / Ninja exception-handling hook that classifies via `ClassificationEngine` and formats via
-  `DefaultFormatter`.
+- **Django REST Framework adapter** — hooks in via a `REST_FRAMEWORK["EXCEPTION_HANDLER"]`
+  setting function. Needs its own detail-flattening normalizer (DRF's `ErrorDetail` tree has a
+  different shape than pydantic's `loc`/`type`/`msg`) rather than reusing `ValidationNormalizer`
+  directly. Note: DRF's exception handler is only invoked for `APIException`/`Http404`/
+  `PermissionDenied` raised inside a DRF view — a raw uncaught exception falls through to
+  Django's normal 500 handling instead, so full catch-everything parity with the other adapters
+  would additionally need a plain-Django `process_exception` middleware as a safety net.
 - **Express.js adapter (JavaScript port)** — a separate package outside the Python distribution;
   would need its own port of the core contracts, not just an adapter.
 - **AI-powered developer suggestions & self-healing hints** — extending

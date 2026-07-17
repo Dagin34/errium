@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Errium is a lightweight error normalization/translation library for APIs. It intercepts uncaught
 exceptions, HTTP exceptions, and request validation errors, and standardizes them into a
-consistent, frontend-safe JSON response shape. FastAPI and Flask are both supported today; the
-package is split into a framework-agnostic core plus a thin adapter per framework (see
+consistent, frontend-safe JSON response shape. FastAPI, Flask, and Django Ninja are all supported
+today; the package is split into a framework-agnostic core plus a thin adapter per framework (see
 Architecture, and `ARCHITECTURE.md` for the full writeup).
 
 ## Commands
@@ -15,7 +15,7 @@ Architecture, and `ARCHITECTURE.md` for the full writeup).
 Dependency management and running things goes through `uv`.
 
 ```bash
-uv sync                       # install/sync dev dependencies into .venv (includes the flask extra)
+uv sync                       # install/sync dev dependencies into .venv (includes flask + django-ninja extras)
 uv run pytest                 # run the full test suite
 uv run pytest --tb=short      # shorter tracebacks
 uv run pytest tests/unit/test_classification.py::test_generic_exception_fallback  # single test
@@ -25,13 +25,15 @@ uv run mypy src               # type check (strict mode; mypy needs an explicit 
 ```
 
 Tests are split into `tests/unit` and `tests/integration` (the latter drives a real app end-to-end via
-`fastapi.testclient.TestClient` or `flask.Flask.test_client()`). `pytest-asyncio` runs in `auto` mode,
-so async tests don't need an explicit marker. CI (`.github/workflows/ci.yml`) runs ruff, ruff format
---check, mypy, and pytest across Python 3.11/3.12 on every push/PR to `main`.
+`fastapi.testclient.TestClient`, `flask.Flask.test_client()`, or `ninja.testing.TestClient`).
+`tests/conftest.py` configures a minimal Django settings module before collection — required because
+`errium_ninja` can't even be imported without Django settings configured first. `pytest-asyncio` runs
+in `auto` mode, so async tests don't need an explicit marker. CI (`.github/workflows/ci.yml`) runs
+ruff, ruff format --check, mypy, and pytest across Python 3.11/3.12 on every push/PR to `main`.
 
 ## Architecture
 
-The codebase is deliberately split into three packages under `src/`:
+The codebase is deliberately split into four packages under `src/`:
 
 - **`errium_core`** — framework-agnostic. Contains the classification engine, contracts (dataclasses),
   formatters, normalizers, tracing, and settings. Nothing here imports FastAPI, Starlette, or Flask
@@ -43,10 +45,13 @@ The codebase is deliberately split into three packages under `src/`:
   `RequestValidationError` exception handler, and FastAPI/Starlette-specific classifiers.
 - **`errium_flask`** — the Flask-specific adapter layer: the `ErriumFlask` extension
   (`init_app(app)` pattern) and `WerkzeugHTTPExceptionClassifier`.
+- **`errium_ninja`** — the Django Ninja adapter layer: `register_errium(api)` (registered via
+  Ninja's own `api.exception_handler(...)` decorator style, not a class), plus
+  `NinjaValidationErrorClassifier`, `NinjaHttpErrorClassifier`, and `DjangoHttp404Classifier`.
 
-When adding support for another framework (Django, etc. — see `ROADMAP.md`), follow this same
-pattern: put framework-specific classifiers/handlers in a new `src/errium_<framework>` package and
-reuse `errium_core` untouched.
+When adding support for another framework (Django REST Framework is next — see `ROADMAP.md`),
+follow this same pattern: put framework-specific classifiers/handlers in a new
+`src/errium_<framework>` package and reuse `errium_core` untouched.
 
 ### Request flow
 
@@ -70,9 +75,24 @@ handler when no more specific handler exists. It also runs `ValidationNormalizer
 exception is a pydantic `ValidationError`, since Flask has no built-in request-validation exception
 type of its own.
 
-Note each entry point (FastAPI middleware, FastAPI validation handler, Flask extension) constructs
-its own `ClassificationEngine` rather than sharing one — keep that in mind when registering custom
-classifiers, they need to be registered in every entry point they should apply to.
+The Django Ninja adapter (`errium_ninja.extension.register_errium`) registers one shared handler
+against four exception types via `api.exception_handler(...)`: `ninja.errors.ValidationError`,
+`ninja.errors.HttpError`, `django.http.Http404`, and the base `Exception`. This is necessary
+because it must **override** Ninja's own built-in default handlers for those same four types
+(Ninja registers its own defaults on `NinjaAPI` construction) — Ninja's default `Exception`
+handler re-raises when Django's `DEBUG` setting is off rather than returning JSON, which
+`register_errium` replaces with a handler that always returns Errium's standardized response.
+Before normalizing, it also strips a Ninja-specific quirk: for a single-Schema body/form param,
+Ninja's `loc` includes a synthetic segment equal to the endpoint's *parameter name* (e.g.
+`("body", "payload", "password")`) — `_flatten_ninja_errors()` drops that segment so `details`
+keys match FastAPI/Flask's flat field names instead of leaking the parameter name. `django` ships
+no type stubs, so `pyproject.toml` has a `[[tool.mypy.overrides]]` entry silencing
+`import-untyped` for `django.*` rather than pulling in `django-stubs`.
+
+Note each entry point (FastAPI middleware, FastAPI validation handler, Flask extension, Ninja
+`register_errium`) constructs its own `ClassificationEngine` rather than sharing one — keep that
+in mind when registering custom classifiers, they need to be registered in every entry point they
+should apply to.
 
 ### Classification engine (`errium_core/classifiers/engine.py`)
 
@@ -83,9 +103,10 @@ classifiers, they need to be registered in every entry point they should apply t
   are always registered by the engine's `__init__` — they're the framework-agnostic classifiers
   (Pydantic/FastAPI validation errors, and SQLAlchemy errors detected without importing SQLAlchemy).
 - Adapter-specific classifiers (`FastAPIHTTPExceptionClassifier`,
-  `FastAPIValidationErrorClassifier`, `WerkzeugHTTPExceptionClassifier`) use higher priorities
-  (200+) so they win over the generic classifiers when both could match. Both
-  `FastAPIHTTPExceptionClassifier` and `WerkzeugHTTPExceptionClassifier` share the same
+  `FastAPIValidationErrorClassifier`, `WerkzeugHTTPExceptionClassifier`,
+  `NinjaHttpErrorClassifier`, `DjangoHttp404Classifier`) use higher priorities (200+) so they win
+  over the generic classifiers when both could match. `FastAPIHTTPExceptionClassifier`,
+  `WerkzeugHTTPExceptionClassifier`, and `NinjaHttpErrorClassifier` all share the same
   status-code → category table via `errium_core/classifiers/status_mapping.py`'s
   `category_for_status_code()` — update that one function if the mapping needs to change, not each
   adapter separately.

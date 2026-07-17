@@ -11,7 +11,8 @@ Errium is split into a framework-agnostic core and thin, framework-specific adap
 src/
 ├── errium_core/     # framework-agnostic: classification, contracts, formatting, settings
 ├── errium/          # FastAPI / Starlette adapter
-└── errium_flask/    # Flask adapter
+├── errium_flask/    # Flask adapter
+└── errium_ninja/    # Django Ninja adapter
 ```
 
 `errium_core` never imports FastAPI, Starlette, or Flask. Where it needs to recognize a
@@ -20,7 +21,7 @@ framework's exception type without depending on that framework (e.g. FastAPI's
 walking `type(exc).__mro__` for a known module path — rather than importing the framework. See
 `errium_core/classifiers/validation.py` and `errium_core/classifiers/database.py` for examples.
 
-Each adapter package (`errium`, `errium_flask`) contributes:
+Each adapter package (`errium`, `errium_flask`, `errium_ninja`) contributes:
 - One or more `ExceptionClassifier` implementations for framework-specific exception types
   (`FastAPIHTTPExceptionClassifier`, `WerkzeugHTTPExceptionClassifier`, ...).
 - An integration point that hooks into the framework's error-handling mechanism (a middleware for
@@ -67,12 +68,14 @@ follows this same pattern and reuses `errium_core` untouched.
   priority-sorted list.
 - `status_mapping.py` — `category_for_status_code(status_code)`, the shared HTTP-status-code →
   `ErrorCategory` table (401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND, 409→DUPLICATE,
-  422→VALIDATION, else→INTERNAL). Both `FastAPIHTTPExceptionClassifier` and
-  `WerkzeugHTTPExceptionClassifier` use this so the mapping is defined once.
+  422→VALIDATION, else→INTERNAL). `FastAPIHTTPExceptionClassifier`,
+  `WerkzeugHTTPExceptionClassifier`, and `NinjaHttpErrorClassifier` all use this so the mapping is
+  defined once.
 
 Each adapter entry point (the FastAPI middleware, the FastAPI validation handler, the Flask
-extension) constructs its **own** `ClassificationEngine` instance rather than sharing one. A
-custom classifier meant to apply everywhere needs to be registered on each entry point.
+extension, the Ninja registration function) constructs its **own** `ClassificationEngine`
+instance rather than sharing one. A custom classifier meant to apply everywhere needs to be
+registered on each entry point.
 
 ### Formatting (`errium_core/formatters/`)
 
@@ -98,8 +101,9 @@ custom classifier meant to apply everywhere needs to be registered on each entry
    (capitalized start, trailing period).
 
 Custom field-message mappings can be injected via `ValidationNormalizer(custom_mappings={...})`.
-Both the FastAPI validation handler and the Flask extension use this to turn a raw pydantic
-`ValidationError`/`RequestValidationError` into the beautified `details` dict.
+The FastAPI validation handler, the Flask extension, and the Django Ninja adapter all use this to
+turn a raw pydantic `ValidationError`/`RequestValidationError`/Ninja `ValidationError` into the
+beautified `details` dict.
 
 ### Settings (`errium_core/config/settings.py`)
 
@@ -157,6 +161,45 @@ Both entry points converge on the same contract: build a `ClassifiedError`, wrap
 - Response is returned as `(jsonify(...), status_code)`, Flask's standard
   `(body, status_code)` response tuple form.
 
+## Adapter: Django Ninja (`errium_ninja`)
+
+Django Ninja is the closest architectural match to FastAPI: it's Pydantic-native, and its request
+validation errors carry the same `loc`/`type`/`msg` shape FastAPI's do. The adapter follows the
+same registration style Ninja itself uses — decorators on a `NinjaAPI` instance — rather than a
+Flask-style extension class:
+
+- **`register_errium(api: NinjaAPI)`** (`extension.py`) — the sole entry point. It builds a
+  `ClassificationEngine`, registers `NinjaValidationErrorClassifier`, `NinjaHttpErrorClassifier`,
+  and `DjangoHttp404Classifier`, then registers one shared handler function against
+  `ninja.errors.ValidationError`, `ninja.errors.HttpError`, `django.http.Http404`, and the base
+  `Exception` via `api.exception_handler(...)`. This **overrides Ninja's own built-in default
+  handlers** for those same exception types (Ninja registers defaults for all four when a
+  `NinjaAPI` is constructed) — notably, Ninja's default `Exception` handler re-raises when
+  `django.conf.settings.DEBUG` is `False` ("let django deal with it"), which would bypass
+  Errium's JSON contract entirely in production. `register_errium` always returns a standardized
+  response instead, deferring the debug/production decision to Errium's own `ERRIUM_DEBUG`
+  setting rather than Django's `DEBUG`.
+- **`classifiers.py`**:
+  - `NinjaValidationErrorClassifier` (priority 210) — matches `ninja.errors.ValidationError`.
+  - `NinjaHttpErrorClassifier` (priority 200) — matches `ninja.errors.HttpError`, which also
+    covers its subclasses `AuthenticationError`, `AuthorizationError`, and `Throttled` via
+    `isinstance`. Maps `exc.status_code` through `category_for_status_code`.
+  - `DjangoHttp404Classifier` (priority 200) — matches Django's own `Http404` (e.g. from
+    `get_object_or_404`), which isn't an `HttpError` subclass and needs its own classifier.
+- **Ninja's `loc` quirk**: when a single Pydantic `Schema` is used as a body/form parameter (the
+  idiomatic pattern — `def view(request, payload: SomeSchema)`), Ninja wraps validation errors
+  behind a synthetic segment equal to the *endpoint's parameter name* (e.g.
+  `("body", "payload", "password")`), instead of FastAPI's flat `("body", "password")`. Query,
+  path, and header params don't get this wrapper — Ninja already flattens those. Left alone, this
+  would leak the arbitrary parameter name into the `details` dict's keys and break contract parity
+  with the other adapters. `extension.py`'s `_flatten_ninja_errors()` strips that one synthetic
+  segment (for `body`/`form` locations only) before handing errors to `ValidationNormalizer`, so
+  `details` keys always match what FastAPI/Flask would produce for the same field.
+
+Because `NinjaAPI`/`django.http` can't even be imported without Django settings configured first,
+anything that touches `errium_ninja` — including its own test suite — needs
+`django.conf.settings.configure(...)` + `django.setup()` called before import. See `tests/conftest.py`.
+
 ## Response contract
 
 Every adapter produces the same JSON shape:
@@ -184,5 +227,8 @@ out of production responses.
 - `tests/unit/` — pure unit tests against classifiers, the normalizer, and the formatter, with no
   running app.
 - `tests/integration/` — drives a real app (`fastapi.testclient.TestClient` /
-  `flask.Flask.test_client()`) end-to-end through the adapter's actual wiring, asserting on the
-  full JSON response shape.
+  `flask.Flask.test_client()` / `ninja.testing.TestClient`) end-to-end through the adapter's
+  actual wiring, asserting on the full JSON response shape.
+- `tests/conftest.py` — configures a minimal Django settings module and calls `django.setup()`
+  before test collection, so `errium_ninja` (and anything else that needs Django) is importable.
+  No-op for the FastAPI/Flask suites.

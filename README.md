@@ -83,6 +83,26 @@ ErriumFlask(app)
 # Your routes go here...
 ```
 
+Django Ninja is supported too, via the `errium[ninja]` extra:
+
+```bash
+uv pip install "errium[ninja]"
+```
+
+```python
+from ninja import NinjaAPI
+from errium_ninja import register_errium
+
+api = NinjaAPI()
+
+# Registers handlers covering Ninja's ValidationError, HttpError (and its
+# AuthenticationError/AuthorizationError/Throttled subclasses), Django's
+# Http404, and generic exceptions.
+register_errium(api)
+
+# Your endpoints go here...
+```
+
 ---
 
 ## 🔍 Before vs. After
@@ -125,7 +145,8 @@ ErriumFlask(app)
 
 Errium is designed framework-agnostically at the core. We are planning the following integrations:
 - [x] Flask Adapter Layer
-- [ ] Django / Ninja Adapter Layer
+- [x] Django Ninja Adapter Layer
+- [ ] Django REST Framework Adapter Layer
 - [ ] Express.js Adapter Layer (JavaScript port)
 - [ ] AI-Powered Developer Suggestions & Self-Healing Hints
 
