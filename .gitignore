@@ -11,3 +11,5 @@ build/
 site/
 .venv/
 .env
+# Playwright MCP scratch output
+.playwright-mcp/

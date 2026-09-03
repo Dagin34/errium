@@ -1,0 +1,300 @@
+/* Errium docs theme — visual identity from https://dagmawi.et
+   Loaded after Material's own stylesheets, so these declarations win. */
+
+:root {
+  --errium-radius: 0.75rem;
+}
+
+/* ---- Brand tokens ------------------------------------------------------ */
+
+:root {
+  --errium-orange: #ff6900;
+  --errium-orange-dim: #c2410c;
+  --errium-ink: #030712;
+  --errium-surface: #0b0f19;
+  --errium-border: #1d202a;
+  --errium-muted: #9ca3af;
+}
+
+/* ---- Dark palette (default) -------------------------------------------- */
+
+/* Material sets several of these at [data-md-color-scheme=slate][data-md-color-primary=black]
+   — specificity (0,2,0), which beats a lone attribute selector no matter the load order.
+   Adding a bare [data-md-color-primary] matches that weight without hardcoding a primary
+   value, so the palette survives a future `primary:` change in mkdocs.yml. */
+body[data-md-color-scheme="slate"][data-md-color-primary] {
+  --md-default-bg-color: var(--errium-ink);
+  --md-default-fg-color: #ffffff;
+  --md-default-fg-color--light: var(--errium-muted);
+  --md-default-fg-color--lighter: #6b7280;
+
+  --md-primary-fg-color: var(--errium-ink);
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--errium-orange);
+  --md-typeset-a-color: var(--errium-orange);
+
+  --md-footer-bg-color: var(--errium-surface);
+  --md-footer-bg-color--dark: var(--errium-ink);
+}
+
+/* Header and footer sit flush against the page with a hairline rule. */
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: var(--errium-ink);
+  border-bottom: 1px solid var(--errium-border);
+  box-shadow: none;
+}
+
+/* ---- Typography -------------------------------------------------------- */
+
+.md-typeset {
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--errium-border);
+}
+
+.md-typeset h3,
+.md-typeset h4 {
+  font-weight: 600;
+}
+
+.md-nav,
+.md-tabs__link,
+.md-typeset table th {
+  font-weight: 500;
+}
+
+.md-typeset a {
+  text-underline-offset: 0.2em;
+}
+
+.md-typeset a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Surfaces ---------------------------------------------------------- */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--errium-border);
+  border-radius: var(--errium-radius);
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--errium-surface);
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: var(--errium-radius);
+  border-width: 1px;
+  border-left-width: 3px;
+  box-shadow: none;
+}
+
+/* ---- Light palette ----------------------------------------------------- */
+
+/* Same specificity note as the dark palette above: Material sets link colors at
+   [data-md-color-scheme=...][data-md-color-primary=black], so match that weight.
+   Redefining --errium-surface/--errium-border here automatically retunes the
+   tables, admonitions and h2 rules, which read those tokens by inheritance. */
+body[data-md-color-scheme="default"][data-md-color-primary] {
+  --md-default-bg-color: #faf9f7;
+  --md-default-fg-color: #111827;
+  --md-default-fg-color--light: #4b5563;
+
+  --md-primary-fg-color: #111827;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--errium-orange-dim);
+  --md-typeset-a-color: var(--errium-orange-dim);
+
+  --md-footer-bg-color: #111827;
+
+  --errium-surface: #f3f1ee;
+  --errium-border: #e2ddd6;
+}
+
+[data-md-color-scheme="default"] .md-header,
+[data-md-color-scheme="default"] .md-tabs {
+  background-color: #111827;
+  border-bottom: 1px solid #111827;
+  box-shadow: none;
+}
+
+/* ---- Code -------------------------------------------------------------- */
+
+.md-typeset pre > code,
+.md-typeset .highlight {
+  border-radius: var(--errium-radius);
+}
+
+body[data-md-color-scheme="slate"][data-md-color-primary] {
+  --md-code-bg-color: var(--errium-surface);
+  --md-code-fg-color: #e5e7eb;
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre > code {
+  border: 1px solid var(--errium-border);
+}
+
+/* Pygments token colors, dark. */
+[data-md-color-scheme="slate"] .md-typeset .highlight .k,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kn,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kd,
+[data-md-color-scheme="slate"] .md-typeset .highlight .ow {
+  color: var(--errium-orange);
+  font-weight: 500;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .s,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s2,
+[data-md-color-scheme="slate"] .md-typeset .highlight .sb {
+  color: #86efac;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .c,
+[data-md-color-scheme="slate"] .md-typeset .highlight .c1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .cm {
+  color: #6b7280;
+  font-style: italic;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .nt,
+[data-md-color-scheme="slate"] .md-typeset .highlight .nf {
+  color: #93c5fd;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .mi,
+[data-md-color-scheme="slate"] .md-typeset .highlight .mf,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kc {
+  color: #fbbf24;
+}
+
+/* Inline code reads as a chip, not a block. */
+.md-typeset code:not(pre code) {
+  border-radius: 0.35rem;
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+}
+
+body[data-md-color-scheme="slate"][data-md-color-primary] .md-typeset code:not(pre code) {
+  background-color: #171b26;
+  color: #fdba74;
+}
+
+/* ---- Homepage hero ----------------------------------------------------- */
+
+.errium-hero {
+  border-bottom: 1px solid var(--errium-border);
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    rgba(255, 105, 0, 0.10),
+    transparent 70%
+  );
+}
+
+.errium-hero__inner {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 3.5rem;
+  text-align: center;
+}
+
+.errium-hero__title {
+  font-size: 3.25rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--md-default-fg-color);
+}
+
+.errium-hero__tagline {
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.65;
+  margin: 1rem auto 2rem;
+  max-width: 34rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.errium-hero__install {
+  margin-bottom: 2rem;
+}
+
+.errium-hero__install code {
+  display: inline-block;
+  padding: 0.7rem 1.25rem;
+  border: 1px solid var(--errium-border);
+  border-radius: var(--errium-radius);
+  background-color: var(--errium-surface);
+  font-size: 0.9rem;
+}
+
+.errium-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.errium-btn {
+  display: inline-block;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid var(--errium-border);
+  border-radius: var(--errium-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.errium-btn:hover {
+  border-color: var(--errium-orange);
+  transform: translateY(-1px);
+}
+
+.errium-btn--primary {
+  background-color: var(--errium-orange);
+  border-color: var(--errium-orange);
+  color: #ffffff;
+}
+
+.errium-btn--primary:hover {
+  background-color: #e65f00;
+  border-color: #e65f00;
+}
+
+/* The README's own H1 duplicates the hero title, but ONLY on the homepage --
+   :has() scopes this to pages that actually render the hero, so Architecture,
+   Roadmap, Changelog and Contributing keep their own H1. If a browser lacks
+   :has() support the rule simply no-ops and the title shows twice, which is a
+   safe failure mode. */
+body:has(.errium-hero) .md-content__inner > h1:first-of-type {
+  display: none;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .errium-hero__inner {
+    padding: 2.5rem 1.25rem 2.25rem;
+  }
+
+  .errium-hero__title {
+    font-size: 2.25rem;
+  }
+}

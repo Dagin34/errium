@@ -12,6 +12,7 @@ Errium is a lightweight, framework-agnostic error normalization and translation 
 ## ⚡ The Problem
 
 Building APIs with modern frameworks (like FastAPI) often yields inconsistent error responses, causing friction for frontend teams:
+
 - **Ugly FastAPI Validation Errors**: Deeply nested, verbose, and difficult to parse direct Pydantic formats.
 - **Inconsistent Backend Responses**: Uncaught internal exceptions return unhandled stack trace leaks or plain text errors depending on where they occurred.
 - **Frontend Integration Pain**: Frontend engineers are forced to write custom parsers for every microservice, parsing varying response layouts.
@@ -181,6 +182,7 @@ use, matching DRF's established convention.
 ## 🗺️ Roadmap
 
 Errium is designed framework-agnostically at the core. We are planning the following integrations:
+
 - [x] Flask Adapter Layer
 - [x] Django Ninja Adapter Layer
 - [x] Django REST Framework Adapter Layer

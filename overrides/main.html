@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{#- Material requests only 300/400/700. The Errium type scale also uses 500 and 600,
+    so the font request is widened here to avoid synthesized (faux-bold) weights. -#}
+{% block fonts %}
+  {% set text = config.theme.font.text | d("Poppins", true) %}
+  {% set code = config.theme.font.code | d("Roboto Mono", true) %}
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{
+      text | replace(' ', '+') }}:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family={{
+      code | replace(' ', '+') }}:wght@400;700&display=swap">
+  <style>:root{--md-text-font:"{{ text }}";--md-code-font:"{{ code }}"}</style>
+{% endblock %}
+
+{% block hero %}
+  {% if page.is_homepage %}
+    <section class="errium-hero">
+      <div class="errium-hero__inner">
+        <h1 class="errium-hero__title">Errium</h1>
+        <p class="errium-hero__tagline">
+          One consistent, frontend-safe JSON shape for every API error &mdash;
+          across FastAPI, Flask, Django Ninja, and Django REST Framework.
+        </p>
+        <div class="errium-hero__install">
+          <code>pip install errium</code>
+        </div>
+        <div class="errium-hero__actions">
+          <a class="errium-btn errium-btn--primary" href="{{ 'index.html#-installation' | url }}">Quickstart</a>
+          <a class="errium-btn" href="https://github.com/Dagin34/errium">GitHub</a>
+          <a class="errium-btn" href="https://pypi.org/project/errium/">PyPI</a>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
