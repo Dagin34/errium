@@ -1,6 +1,6 @@
 [project]
 name = "errium"
-version = "0.1.0"
+version = "0.1.1"
 description = "Intelligent API error normalization and exception handling infrastructure for FastAPI and beyond."
 readme = "README.md"
 requires-python = ">=3.11"

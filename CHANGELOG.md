@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-09-03
+
+Documentation-only release. No code changes — published so the updated README renders on the
+PyPI project page, which snapshots it per version.
+
+### Changed
+
+- README now carries PyPI, Python version, license, and CI badges, documents the `flask`/`ninja`/
+  `drf` extras together, notes the shipped `py.typed` markers, and flags that a server
+  (`uvicorn`) must be installed separately since Errium depends on `fastapi`, not
+  `fastapi[standard]`.
+
+### Added
+
+- This changelog, published to the docs site at https://dagin34.github.io/errium/changelog/.
+
 ## [0.1.0] — 2026-09-03
 
 First public release, [published on PyPI](https://pypi.org/project/errium/).
@@ -33,5 +49,6 @@ First public release, [published on PyPI](https://pypi.org/project/errium/).
 - **Typing** — all five packages ship a `py.typed` marker; the source is checked under
   `mypy --strict`.
 
-[Unreleased]: https://github.com/Dagin34/errium/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Dagin34/errium/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Dagin34/errium/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Dagin34/errium/releases/tag/v0.1.0
