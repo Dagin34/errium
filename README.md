@@ -1,5 +1,10 @@
 # Errium – Intelligent API Error Normalization for FastAPI
 
+[![PyPI version](https://img.shields.io/pypi/v/errium.svg)](https://pypi.org/project/errium/)
+[![Python versions](https://img.shields.io/pypi/pyversions/errium.svg)](https://pypi.org/project/errium/)
+[![License: MIT](https://img.shields.io/pypi/l/errium.svg)](https://github.com/Dagin34/errium/blob/main/LICENSE)
+[![CI](https://github.com/Dagin34/errium/actions/workflows/ci.yml/badge.svg)](https://github.com/Dagin34/errium/actions/workflows/ci.yml)
+
 Errium is a lightweight, framework-agnostic error normalization and translation middleware for modern APIs. It intercepts uncaught exceptions, HTTP exceptions, and request validation errors, standardizing them into clean, consistent, and frontend-safe JSON responses.
 
 ---
@@ -33,13 +38,27 @@ Errium provides a unified error classification, normalization, and formatting pi
 
 ## 📦 Installation
 
-Install Errium in your virtual environment:
+Errium is published on [PyPI](https://pypi.org/project/errium/) and requires Python 3.11+.
 
 ```bash
 uv pip install errium
 # Or using traditional pip
 pip install errium
 ```
+
+The base install ships the core plus the FastAPI adapter. Each other framework is an extra:
+
+```bash
+uv pip install "errium[flask]"   # Flask
+uv pip install "errium[ninja]"   # Django Ninja
+uv pip install "errium[drf]"     # Django REST Framework
+```
+
+> **Note:** Errium depends on `fastapi`, not `fastapi[standard]`, so it stays light for Flask and
+> Django users. If you were relying on Errium to pull in a server, install one yourself
+> (`uv pip install uvicorn`).
+
+All five packages ship a `py.typed` marker, so type checkers see Errium's annotations directly.
 
 ---
 

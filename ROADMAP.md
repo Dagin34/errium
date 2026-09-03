@@ -31,6 +31,10 @@ rounding out the classification coverage in the core itself.
 - **Database error classification** — `DatabaseExceptionClassifier` maps SQLAlchemy errors to
   `DATABASE_ERROR`, and integrity errors that look like uniqueness violations to
   `DUPLICATE_RESOURCE`, without a hard SQLAlchemy dependency.
+- **Published on PyPI** — `errium` 0.1.0 is available at
+  https://pypi.org/project/errium/ (`pip install errium`), with `flask`, `ninja`, and `drf`
+  extras. All five packages ship `py.typed`. The distribution depends on `fastapi` rather than
+  `fastapi[standard]`, so Flask and Django users don't inherit a server and CLI toolchain.
 - **CI** — GitHub Actions workflow running `ruff check`, `ruff format --check`, `mypy`, and
   `pytest` across Python 3.11/3.12 on every push and PR to `main`.
 
