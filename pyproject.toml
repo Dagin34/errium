@@ -8,8 +8,30 @@ authors = [
     { name = "Dagmawi Napoleon Bogale" }
 ]
 license = { text = "MIT" }
+
+keywords = [
+    "fastapi",
+    "api",
+    "error-handling",
+    "exception-handling",
+    "error-normalization",
+    "pydantic"
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: FastAPI",
+    "Framework :: Flask",
+]
+
 dependencies = [
-    "fastapi[standard]>=0.136.3",
+    "fastapi>=0.136.3",
     "pydantic>=2.13.4",
     "starlette>=1.1.0",
 ]
@@ -54,6 +76,12 @@ ignore_missing_imports = true
 [tool.coverage.run]
 source = ["src/errium", "src/errium_core", "src/errium_flask", "src/errium_ninja", "src/errium_drf"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".claude",
+    "CLAUDE.md",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/errium",
@@ -74,7 +102,14 @@ dev = [
     "mkdocs-material>=9.7.6",
     "mypy>=2.1.0",
     "pre-commit>=4.6.0",
+    "pydantic[email]>=2.13.4",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.15.14",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Dagin34/errium"
+Repository = "https://github.com/Dagin34/errium"
+Issues = "https://github.com/Dagin34/errium/issues"
+Documentation = "https://dagin34.github.io/errium/"
