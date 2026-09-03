@@ -133,3 +133,65 @@ body[data-md-color-scheme="default"][data-md-color-primary] {
   border-bottom: 1px solid #111827;
   box-shadow: none;
 }
+
+/* ---- Code -------------------------------------------------------------- */
+
+.md-typeset pre > code,
+.md-typeset .highlight {
+  border-radius: var(--errium-radius);
+}
+
+body[data-md-color-scheme="slate"][data-md-color-primary] {
+  --md-code-bg-color: var(--errium-surface);
+  --md-code-fg-color: #e5e7eb;
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre > code {
+  border: 1px solid var(--errium-border);
+}
+
+/* Pygments token colors, dark. */
+[data-md-color-scheme="slate"] .md-typeset .highlight .k,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kn,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kd,
+[data-md-color-scheme="slate"] .md-typeset .highlight .ow {
+  color: var(--errium-orange);
+  font-weight: 500;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .s,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .s2,
+[data-md-color-scheme="slate"] .md-typeset .highlight .sb {
+  color: #86efac;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .c,
+[data-md-color-scheme="slate"] .md-typeset .highlight .c1,
+[data-md-color-scheme="slate"] .md-typeset .highlight .cm {
+  color: #6b7280;
+  font-style: italic;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .nt,
+[data-md-color-scheme="slate"] .md-typeset .highlight .nf {
+  color: #93c5fd;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .highlight .mi,
+[data-md-color-scheme="slate"] .md-typeset .highlight .mf,
+[data-md-color-scheme="slate"] .md-typeset .highlight .kc {
+  color: #fbbf24;
+}
+
+/* Inline code reads as a chip, not a block. */
+.md-typeset code:not(pre code) {
+  border-radius: 0.35rem;
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+}
+
+body[data-md-color-scheme="slate"][data-md-color-primary] .md-typeset code:not(pre code) {
+  background-color: #171b26;
+  color: #fdba74;
+}
