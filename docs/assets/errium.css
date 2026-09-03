@@ -104,3 +104,32 @@ body[data-md-color-scheme="slate"][data-md-color-primary] {
   border-left-width: 3px;
   box-shadow: none;
 }
+
+/* ---- Light palette ----------------------------------------------------- */
+
+/* Same specificity note as the dark palette above: Material sets link colors at
+   [data-md-color-scheme=...][data-md-color-primary=black], so match that weight.
+   Redefining --errium-surface/--errium-border here automatically retunes the
+   tables, admonitions and h2 rules, which read those tokens by inheritance. */
+body[data-md-color-scheme="default"][data-md-color-primary] {
+  --md-default-bg-color: #faf9f7;
+  --md-default-fg-color: #111827;
+  --md-default-fg-color--light: #4b5563;
+
+  --md-primary-fg-color: #111827;
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--errium-orange-dim);
+  --md-typeset-a-color: var(--errium-orange-dim);
+
+  --md-footer-bg-color: #111827;
+
+  --errium-surface: #f3f1ee;
+  --errium-border: #e2ddd6;
+}
+
+[data-md-color-scheme="default"] .md-header,
+[data-md-color-scheme="default"] .md-tabs {
+  background-color: #111827;
+  border-bottom: 1px solid #111827;
+  box-shadow: none;
+}
