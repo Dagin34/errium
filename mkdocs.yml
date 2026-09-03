@@ -13,25 +13,34 @@ nav:
 
 theme:
   name: material
+  custom_dir: overrides
+  font:
+    text: Poppins
+    code: Roboto Mono
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: teal
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: teal
+      primary: black
+      accent: deep orange
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   features:
     - navigation.tabs
     - navigation.top
     - search.suggest
     - search.highlight
     - content.code.copy
+
+extra_css:
+  - assets/errium.css
 
 markdown_extensions:
   - admonition

@@ -1,0 +1,6 @@
+/* Errium docs theme — visual identity from https://dagmawi.et
+   Loaded after Material's own stylesheets, so these declarations win. */
+
+:root {
+  --errium-radius: 0.75rem;
+}
