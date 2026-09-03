@@ -23,6 +23,7 @@ walking `type(exc).__mro__` for a known module path — rather than importing th
 `errium_core/classifiers/validation.py` and `errium_core/classifiers/database.py` for examples.
 
 Each adapter package (`errium`, `errium_flask`, `errium_ninja`, `errium_drf`) contributes:
+
 - One or more `ExceptionClassifier` implementations for framework-specific exception types
   (`FastAPIHTTPExceptionClassifier`, `WerkzeugHTTPExceptionClassifier`, ...).
 - An integration point that hooks into the framework's error-handling mechanism (a middleware for

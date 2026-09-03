@@ -91,6 +91,7 @@ We adhere to the standard Angular Git commit message style:
 ## 🌿 Branch Naming Rules
 
 Maintain descriptive branch names prefixing the context:
+
 - Features: `feature/short-desc` or `feat/short-desc`
 - Bug fixes: `bugfix/short-desc` or `fix/short-desc`
 - Documentation: `docs/short-desc`
