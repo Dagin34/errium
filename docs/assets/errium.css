@@ -4,3 +4,103 @@
 :root {
   --errium-radius: 0.75rem;
 }
+
+/* ---- Brand tokens ------------------------------------------------------ */
+
+:root {
+  --errium-orange: #ff6900;
+  --errium-orange-dim: #c2410c;
+  --errium-ink: #030712;
+  --errium-surface: #0b0f19;
+  --errium-border: #1d202a;
+  --errium-muted: #9ca3af;
+}
+
+/* ---- Dark palette (default) -------------------------------------------- */
+
+/* Material sets several of these at [data-md-color-scheme=slate][data-md-color-primary=black]
+   — specificity (0,2,0), which beats a lone attribute selector no matter the load order.
+   Adding a bare [data-md-color-primary] matches that weight without hardcoding a primary
+   value, so the palette survives a future `primary:` change in mkdocs.yml. */
+body[data-md-color-scheme="slate"][data-md-color-primary] {
+  --md-default-bg-color: var(--errium-ink);
+  --md-default-fg-color: #ffffff;
+  --md-default-fg-color--light: var(--errium-muted);
+  --md-default-fg-color--lighter: #6b7280;
+
+  --md-primary-fg-color: var(--errium-ink);
+  --md-primary-bg-color: #ffffff;
+  --md-accent-fg-color: var(--errium-orange);
+  --md-typeset-a-color: var(--errium-orange);
+
+  --md-footer-bg-color: var(--errium-surface);
+  --md-footer-bg-color--dark: var(--errium-ink);
+}
+
+/* Header and footer sit flush against the page with a hairline rule. */
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: var(--errium-ink);
+  border-bottom: 1px solid var(--errium-border);
+  box-shadow: none;
+}
+
+/* ---- Typography -------------------------------------------------------- */
+
+.md-typeset {
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--errium-border);
+}
+
+.md-typeset h3,
+.md-typeset h4 {
+  font-weight: 600;
+}
+
+.md-nav,
+.md-tabs__link,
+.md-typeset table th {
+  font-weight: 500;
+}
+
+.md-typeset a {
+  text-underline-offset: 0.2em;
+}
+
+.md-typeset a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Surfaces ---------------------------------------------------------- */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--errium-border);
+  border-radius: var(--errium-radius);
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: var(--errium-surface);
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: var(--errium-radius);
+  border-width: 1px;
+  border-left-width: 3px;
+  box-shadow: none;
+}
