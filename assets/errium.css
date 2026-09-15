@@ -1,0 +1,114 @@
+/* Retired site. Styles only the "docs have moved" notice on the single
+   remaining page; everything else from the old theme has been removed. */
+
+:root {
+  --errium-bg: #000000;
+  --errium-fg: #ededed;
+  --errium-muted: #8a8a8a;
+  --errium-border: rgba(255, 255, 255, 0.14);
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: var(--errium-bg);
+  --md-default-fg-color: var(--errium-fg);
+  --md-typeset-color: var(--errium-fg);
+  --md-typeset-a-color: var(--errium-fg);
+}
+
+.md-main__inner,
+.md-content__inner {
+  margin: 0;
+  padding: 0;
+}
+
+/* Center the notice in the viewport. */
+.md-content__inner > article,
+.md-typeset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.md-typeset h1 {
+  margin: 0 0 16px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--errium-fg);
+}
+
+.md-typeset p {
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--errium-muted);
+  max-width: 32rem;
+}
+
+.errium-domain a {
+  font-family: var(--md-code-font), monospace;
+  font-size: 16px;
+  color: var(--errium-fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--errium-border);
+  padding-bottom: 2px;
+}
+
+.errium-domain a:hover {
+  border-bottom-color: var(--errium-fg);
+}
+
+.errium-cta {
+  display: inline-block;
+  padding: 10px 20px;
+  border: 1px solid var(--errium-border);
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--errium-fg);
+  text-decoration: none;
+  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+}
+
+.errium-cta:hover {
+  border-color: var(--errium-fg);
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.errium-secondary {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+
+.errium-secondary a {
+  color: var(--errium-muted);
+  text-decoration: none;
+}
+
+.errium-secondary a:hover {
+  color: var(--errium-fg);
+}
+
+.errium-secondary span {
+  margin: 0 8px;
+  color: var(--errium-border);
+}
+
+/* Suppress leftover Material chrome on the retired page. */
+.md-sidebar,
+.md-nav,
+.md-search,
+.md-footer,
+.md-header,
+.md-typeset .headerlink {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
