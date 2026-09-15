@@ -7,6 +7,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-09-15
+
+Documentation-only release. No code changes — published so the new documentation site is linked
+from the PyPI project page, which snapshots project metadata and the README per version.
+
+### Changed
+
+- Documentation moved to https://errium.dagmawi.et/. The `Homepage` and `Documentation` project
+  URLs now point there instead of at the previous MkDocs site on GitHub Pages, and the README
+  links to it.
+- The MkDocs site at https://dagin34.github.io/errium/ is retired; it now serves only a notice
+  pointing to the new domain.
+
 ## [0.1.1] — 2026-09-03
 
 Documentation-only release. No code changes — published so the updated README renders on the

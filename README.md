@@ -4,8 +4,11 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/errium.svg)](https://pypi.org/project/errium/)
 [![License: MIT](https://img.shields.io/pypi/l/errium.svg)](https://github.com/Dagin34/errium/blob/main/LICENSE)
 [![CI](https://github.com/Dagin34/errium/actions/workflows/ci.yml/badge.svg)](https://github.com/Dagin34/errium/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-errium.dagmawi.et-1a1a1a)](https://errium.dagmawi.et/)
 
 Errium is a lightweight, framework-agnostic error normalization and translation middleware for modern APIs. It intercepts uncaught exceptions, HTTP exceptions, and request validation errors, standardizing them into clean, consistent, and frontend-safe JSON responses.
+
+📖 **[Read the documentation → errium.dagmawi.et](https://errium.dagmawi.et/)** — installation, per-framework guides, core concepts, and architecture.
 
 ---
 
@@ -189,4 +192,5 @@ Errium is designed framework-agnostically at the core. We are planning the follo
 - [ ] Express.js Adapter Layer (JavaScript port)
 - [ ] AI-Powered Developer Suggestions & Self-Healing Hints
 
-See `ROADMAP.md` for more detail on what's done and what's planned.
+See [the roadmap](https://errium.dagmawi.et/roadmap) (or `ROADMAP.md`) for more detail on what's
+done and what's planned.

@@ -1,6 +1,6 @@
 [project]
 name = "errium"
-version = "0.1.1"
+version = "0.1.2"
 description = "Intelligent API error normalization and exception handling infrastructure for FastAPI and beyond."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -109,7 +109,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Dagin34/errium"
+Homepage = "https://errium.dagmawi.et/"
 Repository = "https://github.com/Dagin34/errium"
 Issues = "https://github.com/Dagin34/errium/issues"
-Documentation = "https://dagin34.github.io/errium/"
+Documentation = "https://errium.dagmawi.et/"
