@@ -1,15 +1,15 @@
 site_name: Errium
-site_description: Intelligent API error normalization and exception handling infrastructure for FastAPI, Flask, Django Ninja, and Django REST Framework.
+site_description: The Errium documentation has moved to https://errium.dagmawi.et/
 site_url: https://dagin34.github.io/errium/
 repo_name: Dagin34/errium
 repo_url: https://github.com/Dagin34/errium
 
+# This site is retired. It builds a single page pointing at the new documentation
+# site at https://errium.dagmawi.et/. Everything below is stripped to the minimum
+# needed to serve that one notice — no nav, no search, no theme toggle.
+
 nav:
   - Home: index.md
-  - Architecture: architecture.md
-  - Roadmap: roadmap.md
-  - Changelog: changelog.md
-  - Contributing: contributing.md
 
 theme:
   name: material
@@ -17,38 +17,14 @@ theme:
   font:
     text: Poppins
     code: Roboto Mono
-  # No `media` keys: slate is listed first and is therefore the unconditional
-  # default, so every visitor sees the dark identity regardless of OS setting.
-  # The toggle still offers light mode, and Material remembers the choice.
   palette:
     - scheme: slate
       primary: black
       accent: deep orange
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
-    - scheme: default
-      primary: black
-      accent: deep orange
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-  features:
-    - navigation.tabs
-    - navigation.top
-    - search.suggest
-    - search.highlight
-    - content.code.copy
+  features: []
 
 extra_css:
   - assets/errium.css
 
 markdown_extensions:
-  - admonition
-  - tables
-  - toc:
-      permalink: true
-  - pymdownx.highlight:
-      anchor_linenums: true
-  - pymdownx.superfences
-  - pymdownx.inlinehilite
+  - md_in_html

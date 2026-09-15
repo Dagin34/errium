@@ -3,14 +3,12 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
+    # The site is retired and now serves only a "docs have moved" notice, so it no
+    # longer tracks the root markdown files it used to symlink.
     paths:
       - "mkdocs.yml"
       - "docs/**"
-      - "README.md"
-      - "ARCHITECTURE.md"
-      - "ROADMAP.md"
-      - "CHANGELOG.md"
-      - "CONTRIBUTING.md"
+      - "overrides/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
