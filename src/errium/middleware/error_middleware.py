@@ -9,9 +9,21 @@ from errium.classifiers import (
     FastAPIValidationErrorClassifier,
 )
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import HandledError, fallback_error, handle_error
+
+
+def to_json_response(handled: HandledError) -> JSONResponse:
+    """Wrap a handled error in a JSONResponse, falling back if it can't render."""
+    try:
+        return JSONResponse(
+            status_code=handled.status_code,
+            content=handled.body,
+            headers=handled.headers,
+        )
+    except Exception:
+        generic = fallback_error(None, handled.trace_id)
+        return JSONResponse(status_code=generic.status_code, content=generic.body)
 
 
 class ErriumMiddleware(BaseHTTPMiddleware):
@@ -32,20 +44,10 @@ class ErriumMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         except Exception as exc:
-            trace_id = generate_trace_id()
-
-            classified = self.classification_engine.classify(exc)
-
-            error = StandardizedError(
-                status_code=classified.status_code,
-                code=classified.category,
-                message=classified.message,
-                trace_id=trace_id,
-                success=False,
-                exception=exc,
-            )
-
-            return JSONResponse(
-                status_code=classified.status_code,
-                content=self.formatter.format(error),
+            return to_json_response(
+                handle_error(
+                    exc,
+                    engine=self.classification_engine,
+                    formatter=self.formatter,
+                )
             )

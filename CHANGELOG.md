@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- The error path can no longer raise. Exceptions whose `__str__`/`__repr__` fails, or whose
+  arguments are unprintable, now produce the standard JSON envelope on every adapter (previously
+  FastAPI/Django/Flask fell back to their own non-JSON 500 pages). A last-resort handler returns a
+  generic `INTERNAL_SERVER_ERROR` envelope with a fresh `trace_id` if classification or formatting
+  itself fails.
+
+### Added
+
+- `errium_core.safe.safe_str(exc, limit=2000)`: renders an exception as text without ever raising
+  (`str` -> `repr` -> class name) and truncates the result. `debug.message` now uses it.
+- `errium_core.pipeline.handle_error`: the single classify -> format path shared by all adapters.
+
 ## [0.1.2] — 2026-09-15
 
 Documentation-only release. No code changes — published so the new documentation site is linked

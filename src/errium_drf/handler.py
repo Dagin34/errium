@@ -4,9 +4,8 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import fallback_error, handle_error
 from errium_drf.classifiers import (
     DjangoHttp404Classifier,
     DjangoPermissionDeniedClassifier,
@@ -37,24 +36,14 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
     handling. Because this handler always returns a Response, every exception
     raised inside a DRF view gets Errium's standardized JSON contract instead.
     """
-    trace_id = generate_trace_id()
-    classified = _engine.classify(exc)
-
     # Beautify DRF's raw ValidationError.detail tree into a flat
     # field->message dict, mirroring the other adapters' `details` field.
     details = None
     if isinstance(exc, DRFValidationError):
-        details = flatten_drf_errors(exc.detail)
+        drf_exc = exc
 
-    error = StandardizedError(
-        status_code=classified.status_code,
-        code=classified.category,
-        message=classified.message,
-        trace_id=trace_id,
-        success=False,
-        details=details,
-        exception=exc,
-    )
+        def details() -> dict[str, str]:
+            return flatten_drf_errors(drf_exc.detail)
 
     # Mirror DRF's default handler's header handling for auth challenges and
     # throttling, since APIView.handle_exception sets these attributes on the
@@ -67,6 +56,17 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
     if wait:
         headers["Retry-After"] = str(int(wait))
 
-    return Response(
-        _formatter.format(error), status=classified.status_code, headers=headers
+    handled = handle_error(
+        exc,
+        engine=_engine,
+        formatter=_formatter,
+        details=details,
+        headers=headers,
     )
+    try:
+        return Response(
+            handled.body, status=handled.status_code, headers=handled.headers
+        )
+    except Exception:
+        generic = fallback_error(None, handled.trace_id)
+        return Response(generic.body, status=generic.status_code)

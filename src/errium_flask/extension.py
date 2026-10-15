@@ -3,10 +3,9 @@ from flask.typing import ResponseReturnValue
 from pydantic import ValidationError as PydanticValidationError
 
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import fallback_error, handle_error
 from errium_flask.classifiers import WerkzeugHTTPExceptionClassifier
 
 
@@ -44,24 +43,23 @@ class ErriumFlask:
         app.register_error_handler(Exception, self._handle_exception)
 
     def _handle_exception(self, exc: Exception) -> ResponseReturnValue:
-        trace_id = generate_trace_id()
-
-        classified = self.classification_engine.classify(exc)
-
         # Beautify raw pydantic validation errors into a flat field->message dict,
         # mirroring the FastAPI adapter's RequestValidationError handling.
         details = None
         if isinstance(exc, PydanticValidationError):
-            details = self.normalizer.normalize(exc.errors())
+            pydantic_exc = exc
 
-        error = StandardizedError(
-            status_code=classified.status_code,
-            code=classified.category,
-            message=classified.message,
-            trace_id=trace_id,
-            success=False,
+            def details() -> dict[str, str]:
+                return self.normalizer.normalize(pydantic_exc.errors())
+
+        handled = handle_error(
+            exc,
+            engine=self.classification_engine,
+            formatter=self.formatter,
             details=details,
-            exception=exc,
         )
-
-        return jsonify(self.formatter.format(error)), classified.status_code
+        try:
+            return jsonify(handled.body), handled.status_code
+        except Exception:
+            generic = fallback_error(None, handled.trace_id)
+            return jsonify(generic.body), generic.status_code

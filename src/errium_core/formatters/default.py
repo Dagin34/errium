@@ -3,6 +3,7 @@ from typing import Any
 
 from errium_core.config.settings import get_settings
 from errium_core.contracts.error import StandardizedError
+from errium_core.safe import safe_str
 
 
 class DefaultFormatter:
@@ -42,23 +43,26 @@ class DefaultFormatter:
                 "exception": (
                     error.exception.__class__.__name__ if error.exception else None
                 ),
-                "message": str(error.exception) if error.exception else None,
+                "message": (safe_str(error.exception) if error.exception else None),
                 "stack_trace": None,
                 "hints": self._get_debug_hints(error),
             }
 
             if error.exception:
-                debug_info["stack_trace"] = "".join(
-                    traceback.format_exception(
-                        type(error.exception),
-                        error.exception,
-                        error.exception.__traceback__,
-                    )
-                )
+                debug_info["stack_trace"] = self._format_stack_trace(error.exception)
 
             formatted_error["debug"] = debug_info
 
         return formatted_error
+
+    @staticmethod
+    def _format_stack_trace(exc: Exception) -> str:
+        try:
+            return "".join(
+                traceback.format_exception(type(exc), exc, exc.__traceback__)
+            )
+        except Exception:
+            return f"{type(exc).__name__}: {safe_str(exc)}"
 
     def _get_debug_hints(self, error: StandardizedError) -> list[str]:
         """Generate helpful development suggestions based on status code and code."""

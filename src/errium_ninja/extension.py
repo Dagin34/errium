@@ -6,10 +6,9 @@ from ninja.errors import HttpError
 from ninja.errors import ValidationError as NinjaValidationError
 
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import fallback_error, handle_error
 from errium_ninja.classifiers import (
     DjangoHttp404Classifier,
     NinjaHttpErrorClassifier,
@@ -57,28 +56,23 @@ def register_errium(api: NinjaAPI) -> None:
     normalizer = ValidationNormalizer()
 
     def _handle_exception(request: HttpRequest, exc: Exception) -> HttpResponse:
-        trace_id = generate_trace_id()
-        classified = engine.classify(exc)
-
         # Beautify Ninja's raw validation errors into a flat field->message dict,
         # mirroring the FastAPI and Flask adapters.
         details = None
         if isinstance(exc, NinjaValidationError):
-            details = normalizer.normalize(_flatten_ninja_errors(exc.errors))
+            ninja_exc = exc
 
-        error = StandardizedError(
-            status_code=classified.status_code,
-            code=classified.category,
-            message=classified.message,
-            trace_id=trace_id,
-            success=False,
-            details=details,
-            exception=exc,
-        )
+            def details() -> dict[str, str]:
+                return normalizer.normalize(_flatten_ninja_errors(ninja_exc.errors))
 
-        return api.create_response(
-            request, formatter.format(error), status=classified.status_code
-        )
+        handled = handle_error(exc, engine=engine, formatter=formatter, details=details)
+        try:
+            return api.create_response(
+                request, handled.body, status=handled.status_code
+            )
+        except Exception:
+            generic = fallback_error(None, handled.trace_id)
+            return api.create_response(request, generic.body, status=500)
 
     api.exception_handler(Exception)(_handle_exception)
     api.exception_handler(Http404)(_handle_exception)
