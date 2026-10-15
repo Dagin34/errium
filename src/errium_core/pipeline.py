@@ -71,7 +71,11 @@ def handle_error(
     trace_id = trace_id or generate_trace_id()
     try:
         classified = engine.classify(exc)
-        resolved_details = details() if callable(details) else details
+        # `details` describe validation failures only; any other classification
+        # (e.g. a malformed JSON body reported as BAD_REQUEST) carries none.
+        resolved_details = None
+        if classified.category == ErrorCategory.VALIDATION:
+            resolved_details = details() if callable(details) else details
         error = StandardizedError(
             status_code=classified.status_code,
             code=classified.category,

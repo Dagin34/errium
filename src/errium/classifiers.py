@@ -3,6 +3,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from errium_core.classifiers.status_mapping import category_for_status_code
+from errium_core.classifiers.validation import (
+    MALFORMED_BODY_MESSAGE,
+    is_malformed_body,
+)
 from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.classified_error import ClassifiedError
 
@@ -41,6 +45,13 @@ class FastAPIValidationErrorClassifier:
         """Classify FastAPI RequestValidationError."""
         if not isinstance(exc, RequestValidationError):
             return None
+
+        if is_malformed_body(exc):
+            return ClassifiedError(
+                category=ErrorCategory.BAD_REQUEST,
+                status_code=400,
+                message=MALFORMED_BODY_MESSAGE,
+            )
 
         return ClassifiedError(
             category=ErrorCategory.VALIDATION,

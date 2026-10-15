@@ -15,6 +15,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   generic `INTERNAL_SERVER_ERROR` envelope with a fresh `trace_id` if classification or formatting
   itself fails.
 
+### Changed
+
+- **Visible contract change (recommend 0.2.0).** `code` is now consistent with `status_code` for
+  HTTP errors: 400 `BAD_REQUEST`, 405 `METHOD_NOT_ALLOWED`, 406 `NOT_ACCEPTABLE`, 408/504
+  `TIMEOUT`, 409 `CONFLICT`, 410 `GONE`, 413 `PAYLOAD_TOO_LARGE`, 415 `UNSUPPORTED_MEDIA_TYPE`,
+  429 `RATE_LIMITED`, 502/503 `SERVICE_UNAVAILABLE`; any other 4xx is `BAD_REQUEST`. Previously
+  all of these were `INTERNAL_SERVER_ERROR`. Clients switching on `code` should handle the new
+  values; the field set and the existing seven values are unchanged. A database uniqueness
+  violation is still `DUPLICATE_RESOURCE`; a plain HTTP 409 is now `CONFLICT`.
+- In production, 502/503/504 keep their `SERVICE_UNAVAILABLE`/`TIMEOUT` code (with a generic
+  message) instead of collapsing to `INTERNAL_SERVER_ERROR`; every other 5xx still does, and no
+  5xx response carries `details` in production.
+- A request body that is not parseable JSON is now `400 BAD_REQUEST` ("Malformed request body.")
+  on every adapter (FastAPI used to answer `422 VALIDATION_ERROR`).
+
 ### Added
 
 - `errium_core.safe.safe_str(exc, limit=2000)`: renders an exception as text without ever raising

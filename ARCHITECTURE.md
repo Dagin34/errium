@@ -40,7 +40,10 @@ follows this same pattern and reuses `errium_core` untouched.
 
 - `ErrorCategory` (`categories.py`) — the closed set of category strings every response's `code`
   field can take: `VALIDATION_ERROR`, `AUTHENTICATION_ERROR`, `AUTHORIZATION_ERROR`,
-  `RESOURCE_NOT_FOUND`, `DUPLICATE_RESOURCE`, `DATABASE_ERROR`, `INTERNAL_SERVER_ERROR`.
+  `RESOURCE_NOT_FOUND`, `DUPLICATE_RESOURCE`, `DATABASE_ERROR`, `INTERNAL_SERVER_ERROR`,
+  `BAD_REQUEST` (400), `METHOD_NOT_ALLOWED` (405), `NOT_ACCEPTABLE` (406), `TIMEOUT` (408/504),
+  `CONFLICT` (409), `GONE` (410), `PAYLOAD_TOO_LARGE` (413), `UNSUPPORTED_MEDIA_TYPE` (415),
+  `RATE_LIMITED` (429), `SERVICE_UNAVAILABLE` (502/503).
 - `ClassifiedError` (`classified_error.py`) — the minimal output of classification: `category`,
   `status_code`, `message`.
 - `StandardizedError` (`error.py`) — the full internal representation of an error before
@@ -60,7 +63,9 @@ follows this same pattern and reuses `errium_core` untouched.
   genuinely framework-agnostic. Adapters register their own higher-priority, framework-specific
   classifiers (priority 200+) on top of that.
 - `ValidationExceptionClassifier` (`validation.py`) — matches Pydantic `ValidationError` or
-  anything named `RequestValidationError`, always mapping to `VALIDATION_ERROR` / 422.
+  anything named `RequestValidationError`, mapping to `VALIDATION_ERROR` / 422 — except when
+  every error is a `json_invalid` one (the body is not parseable JSON), which is
+  `BAD_REQUEST` / 400 "Malformed request body." on every adapter.
 - `DatabaseExceptionClassifier` (`database.py`) — matches SQLAlchemy exceptions by walking the
   exception class's MRO for a `sqlalchemy.` module path (no SQLAlchemy dependency). An
   `IntegrityError` whose message looks like a uniqueness violation (`unique constraint`,
@@ -69,8 +74,12 @@ follows this same pattern and reuses `errium_core` untouched.
 - `GenericExceptionClassifier` (`generic.py`) — the engine's fallback, not part of the
   priority-sorted list.
 - `status_mapping.py` — `category_for_status_code(status_code)`, the shared HTTP-status-code →
-  `ErrorCategory` table (401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND, 409→DUPLICATE,
-  422→VALIDATION, else→INTERNAL). `FastAPIHTTPExceptionClassifier`,
+  `ErrorCategory` table (400→BAD_REQUEST, 401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND,
+  405→METHOD_NOT_ALLOWED, 406→NOT_ACCEPTABLE, 408→TIMEOUT, 409→CONFLICT, 410→GONE,
+  413→PAYLOAD_TOO_LARGE, 415→UNSUPPORTED_MEDIA_TYPE, 422→VALIDATION, 429→RATE_LIMITED,
+  502/503→SERVICE_UNAVAILABLE, 504→TIMEOUT; any other 4xx→BAD_REQUEST; any other status→INTERNAL).
+  A database uniqueness violation still produces `DUPLICATE_RESOURCE` / 409 via
+  `DatabaseExceptionClassifier`. `FastAPIHTTPExceptionClassifier`,
   `WerkzeugHTTPExceptionClassifier`, `NinjaHttpErrorClassifier`, and `DRFAPIExceptionClassifier`
   all use this so the mapping is defined once.
 
@@ -85,9 +94,10 @@ everywhere needs to be registered on each entry point.
 - `DefaultFormatter` (`default.py`) — the only implementation. Produces the response body:
   `success`, `status_code`, `code`, `message`, `trace_id`, `timestamp`, `details`. Reads
   `get_settings().debug`:
-  - In production (`debug=False`), any `status_code >= 500` has its `code`/`message` sanitized to
-    a generic `INTERNAL_SERVER_ERROR` / "An unexpected error occurred." regardless of what the
-    classifier produced, so internals never leak to clients.
+  - In production (`debug=False`), any `status_code >= 500` has its message and `details`
+    replaced by a generic text, so internals never leak to clients. 502/503/504 keep their
+    `SERVICE_UNAVAILABLE`/`TIMEOUT` code with a generic message for that category; every other
+    5xx collapses to `INTERNAL_SERVER_ERROR` / "An unexpected error occurred.".
   - In debug mode (`debug=True`), a `debug` block is added with the exception class name, its
     message, a full formatted stack trace, and a short list of contextual hints keyed off the
     status code (e.g. "Check the 'details' field..." for 422).
