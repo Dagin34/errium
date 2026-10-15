@@ -38,6 +38,15 @@ rounding out the classification coverage in the core itself.
 - **CI** — GitHub Actions workflow running `ruff check`, `ruff format --check`, `mypy`, and
   `pytest` across Python 3.11/3.12 on every push and PR to `main`.
 
+## Known limitations
+
+- Mid-stream failures (a streaming response raising after its first chunk) cannot be normalized
+  on any adapter: the status and headers have already been sent.
+- A FastAPI mounted sub-app needs its own `errium.install(...)`.
+- Django's `DEBUG = True` technical 500 page replaces `handler500`; errors in middleware listed
+  before `ErriumDjangoMiddleware` are covered only by `handler500`.
+- Development status is still Alpha.
+
 ## Planned
 
 - **Express.js adapter (JavaScript port)** — a separate package outside the Python distribution;

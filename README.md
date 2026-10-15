@@ -56,7 +56,11 @@ The base install ships the core plus the FastAPI adapter. Each other framework i
 uv pip install "errium[flask]"   # Flask
 uv pip install "errium[ninja]"   # Django Ninja
 uv pip install "errium[drf]"     # Django REST Framework
+uv pip install "errium[django]"  # errium_django helpers only (error pages outside Ninja/DRF)
 ```
+
+> **Note:** the base install requires `fastapi`/`starlette`, so the Flask, Ninja and DRF extras
+> install them too. Their adapters never import FastAPI at runtime; it is install footprint only.
 
 > **Note:** Errium depends on `fastapi`, not `fastapi[standard]`, so it stays light for Flask and
 > Django users. If you were relying on Errium to pull in a server, install one yourself
@@ -163,6 +167,38 @@ That's it — every exception raised inside a DRF view (`APIException` family, D
 `PermissionDenied`, and any other uncaught exception) now returns Errium's standardized response.
 Note: validation errors keep DRF's own `400` status code rather than the `422` the other adapters
 use, matching DRF's established convention.
+
+### Configuration
+
+| Variable | Effect |
+|---|---|
+| `ERRIUM_DEBUG` | `true`/`1`/`yes`/`on` (case-insensitive, whitespace ignored) adds a `debug` block and stops sanitizing 5xx messages. Anything else stays off. The mode is logged once at import (INFO on the `errium` logger), with a WARNING if debug is on while `ERRIUM_ENV`/`APP_ENV`/`ENVIRONMENT`/`ENV` says production. |
+| `ERRIUM_TRUST_REQUEST_ID` | Reuse a valid inbound `X-Request-ID` as the `trace_id`. |
+
+`errium.__version__` (and `errium_core`, `errium_flask`, `errium_ninja`, `errium_drf`,
+`errium_django`) report the installed version.
+
+### FastAPI middleware order (CORS)
+
+Starlette runs middleware in reverse order of registration: the one added **last** is outermost.
+Add `CORSMiddleware` **after** Errium so it wraps it; otherwise an uncaught-exception 500 is
+produced *outside* CORS and the browser reports a CORS failure instead of showing the JSON body.
+
+```python
+errium.install(app)                    # adds ErriumMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["https://app.example.com"])  # after
+```
+
+### Known limitations
+
+- **Mid-stream failures cannot be normalized.** If a `StreamingResponse` /
+  `StreamingHttpResponse` generator raises after the first chunk, the status line and headers
+  are already sent; the connection just ends. A generator failing *before* its first byte on
+  FastAPI still returns the 200 it started with. Validate and fetch what you can before
+  returning a streaming response.
+- Mounted FastAPI sub-apps need their own `errium.install(sub_app)`.
+- For Django, errors raised before Django middleware runs (or when `DEBUG = True`) may still
+  render Django's own page; see "Django project setup" above.
 
 ### Custom classifiers
 

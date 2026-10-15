@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `ERRIUM_DEBUG` is now parsed leniently-but-safely: surrounding whitespace is ignored and `on`
+  is accepted alongside `true`/`1`/`yes`. Anything else still leaves debug off. The mode is
+  logged once at import (INFO), with a WARNING when debug is on and the environment variables
+  `ERRIUM_ENV`/`APP_ENV`/`ENVIRONMENT`/`ENV` say production.
 - Response sizes are bounded. `details` is capped at 50 entries (keys 200 chars, messages 500);
   when entries are dropped a `"_truncated": "N more"` key is added (absent otherwise).
   `debug.message` is capped at 2,000 characters and `debug.stack_trace` at 20,000 (the tail is
@@ -52,6 +56,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `__version__` on `errium`, `errium_core`, `errium_flask`, `errium_ninja`, `errium_drf` and
+  `errium_django` (read from the installed distribution metadata).
+- Docs: middleware order for CORS, the mid-stream failure limitation, a configuration table, and a
+  known-limitations section (README + ROADMAP). Packaging: `Framework :: Django` classifier.
 - Public classifier registration on every adapter. `errium.register(MyError, status=409,
   message=...)` (also usable as a class decorator) registers process-wide for all adapters via the
   new `errium_core.registry`. `ErriumMiddleware(app, classifiers=..., engine=...)`,

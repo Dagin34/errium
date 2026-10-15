@@ -142,8 +142,9 @@ below.
 
 ### Settings (`errium_core/config/settings.py`)
 
-`ErriumSettings(debug: bool)` is a process-global singleton, sourced from the `ERRIUM_DEBUG`
-env var at import time (`"true"`/`"1"`/`"yes"`, case-insensitive). `get_settings()` /
+`ErriumSettings(debug, trust_request_id)` is a process-global singleton, sourced by
+`load_settings()` from `ERRIUM_DEBUG` / `ERRIUM_TRUST_REQUEST_ID` at import time (`true`/`1`/`yes`/
+`on`, case-insensitive, whitespace stripped). `announce_mode()` logs the mode once at import. `get_settings()` /
 `set_settings()` read and replace it. Tests mutate this directly via `set_settings(...)`; because
 it's a module-level singleton, tests that rely on a specific debug/production mode should set it
 explicitly rather than assuming a default.
