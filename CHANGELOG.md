@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-15
+
+Found by an outside-in black-box test of 0.1.2 (17 findings); see the sections below. Adds new `code`
+values, so clients that switch exhaustively on `code` should handle them.
+
 ### Fixed
 
 - FastAPI: `HTTPException`, unknown-route 404, 405 and body-parse 400 responses are now Errium
