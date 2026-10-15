@@ -2,7 +2,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 
-from errium.engine import get_engine
+from errium.engine import get_engine, request_trace_id
 from errium.middleware.error_middleware import to_json_response
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.http_detail import flatten_http_detail
@@ -33,6 +33,9 @@ async def http_exception_handler(
             exc,
             engine=get_engine(request),
             formatter=DefaultFormatter(),
+            trace_id=request_trace_id(request),
+            method=request.method,
+            path=request.url.path,
             details=lambda: flatten_http_detail(exc.detail),
             headers=headers,
         )

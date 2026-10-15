@@ -164,6 +164,24 @@ That's it — every exception raised inside a DRF view (`APIException` family, D
 Note: validation errors keep DRF's own `400` status code rather than the `422` the other adapters
 use, matching DRF's established convention.
 
+### Trace IDs and logging
+
+Every error response carries a `trace_id` (also sent as an `X-Trace-Id` response header), and
+Errium logs each handled exception on the `"errium"` logger — `ERROR` with the traceback for 5xx,
+a one-line `WARNING` for 4xx — with that same `trace_id` in the message, so a client-reported id
+can be matched to a log line. Errium never configures logging handlers; attach your own:
+
+```python
+import logging
+logging.getLogger("errium").addHandler(logging.StreamHandler())
+```
+
+To use the id in your own code: `request.state.errium_trace_id` (FastAPI), `flask.g.errium_trace_id`
+(Flask), `request.errium_trace_id` (Django Ninja / DRF), or `errium_core.tracing.current_trace_id()`
+anywhere in the request's context. Set `ERRIUM_TRUST_REQUEST_ID=true` to reuse a valid inbound
+`X-Request-ID` (≤128 characters of letters, digits and `._:-`) as the `trace_id`; by default a
+fresh uuid4 is generated.
+
 ---
 
 ## 🔍 Before vs. After

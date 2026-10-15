@@ -130,8 +130,22 @@ explicitly rather than assuming a default.
 
 ### Tracing (`errium_core/tracing/trace.py`)
 
-`generate_trace_id()` returns a fresh `uuid4()` string per error, used to correlate the
-client-facing response with server-side logs.
+`generate_trace_id()` returns a fresh `uuid4()` string per error. `resolve_trace_id(request_id)`
+picks the id for a request: a fresh uuid4 by default, or — only when `ERRIUM_TRUST_REQUEST_ID` is
+on and the inbound `X-Request-ID` is ≤128 characters of `[A-Za-z0-9._:-]` — that header's value.
+`current_trace_id()` returns the id of the request being handled (a `ContextVar`), so a logging
+filter or application code can attach it to its own log lines. Adapters assign the id once per
+request and expose it as `request.state.errium_trace_id` (FastAPI), `flask.g.errium_trace_id`
+(Flask) or `request.errium_trace_id` (Django Ninja / DRF).
+
+### Pipeline and logging (`errium_core/pipeline.py`)
+
+`handle_error(exc, engine=..., formatter=..., details=..., headers=..., trace_id=...)` is the
+single classify → format path every adapter calls. It never raises (a failure anywhere yields a
+generic 500 envelope with a fresh `trace_id`), adds an `X-Trace-Id` response header, and logs the
+exception on the `errium` logger: `ERROR` with the traceback for status ≥ 500, `WARNING` (one
+line, no traceback) otherwise — each message carries the method, path, status, category and
+`trace_id`. Errium never configures logging handlers; attach your own to the `errium` logger.
 
 ## Adapter: FastAPI (`errium`)
 

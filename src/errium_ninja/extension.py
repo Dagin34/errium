@@ -9,6 +9,7 @@ from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
 from errium_core.pipeline import fallback_error, handle_error
+from errium_core.tracing.trace import resolve_trace_id, set_current_trace_id
 from errium_ninja.classifiers import (
     DjangoHttp404Classifier,
     NinjaHttpErrorClassifier,
@@ -34,6 +35,17 @@ def _flatten_ninja_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
             loc = [loc[0], *loc[2:]]
         flattened.append({**error, "loc": loc})
     return flattened
+
+
+def _request_trace_id(request: HttpRequest) -> str:
+    """Assign the request's trace id once; exposed as `request.errium_trace_id`."""
+    existing = getattr(request, "errium_trace_id", None)
+    if isinstance(existing, str):
+        return existing
+    trace_id = resolve_trace_id(request.META.get("HTTP_X_REQUEST_ID"))
+    request.errium_trace_id = trace_id
+    set_current_trace_id(trace_id)
+    return trace_id
 
 
 def register_errium(api: NinjaAPI) -> None:
@@ -65,14 +77,25 @@ def register_errium(api: NinjaAPI) -> None:
             def details() -> dict[str, str]:
                 return normalizer.normalize(_flatten_ninja_errors(ninja_exc.errors))
 
-        handled = handle_error(exc, engine=engine, formatter=formatter, details=details)
+        handled = handle_error(
+            exc,
+            engine=engine,
+            formatter=formatter,
+            details=details,
+            trace_id=_request_trace_id(request),
+            method=request.method,
+            path=request.path,
+        )
         try:
-            return api.create_response(
+            response = api.create_response(
                 request, handled.body, status=handled.status_code
             )
         except Exception:
-            generic = fallback_error(None, handled.trace_id)
-            return api.create_response(request, generic.body, status=500)
+            handled = fallback_error(None, handled.trace_id)
+            response = api.create_response(request, handled.body, status=500)
+        for name, value in handled.headers.items():
+            response[name] = value
+        return response
 
     api.exception_handler(Exception)(_handle_exception)
     api.exception_handler(Http404)(_handle_exception)

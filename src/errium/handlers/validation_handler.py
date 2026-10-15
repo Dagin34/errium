@@ -2,7 +2,7 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from errium.engine import get_engine
+from errium.engine import get_engine, request_trace_id
 from errium.middleware.error_middleware import to_json_response
 from errium_core.classifiers.validation import is_malformed_body
 from errium_core.formatters.default import DefaultFormatter
@@ -22,6 +22,9 @@ async def validation_exception_handler(
             exc,
             engine=get_engine(request),
             formatter=DefaultFormatter(),
+            trace_id=request_trace_id(request),
+            method=request.method,
+            path=request.url.path,
             # Beautify the raw error details
             details=lambda: (
                 None if is_malformed_body(exc) else normalizer.normalize(exc.errors())

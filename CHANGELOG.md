@@ -37,6 +37,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Every handled exception is now logged on the `errium` logger (`ERROR` + traceback for >= 500,
+  one-line `WARNING` for 4xx) with `trace_id`, status, category, method and path, so the
+  `trace_id` a client reports can be matched to a log line. Errium still configures no handlers.
+- The trace id is exposed to application code: `request.state.errium_trace_id` (FastAPI),
+  `flask.g.errium_trace_id`, `request.errium_trace_id` (Django), and
+  `errium_core.tracing.current_trace_id()`. Error responses carry an `X-Trace-Id` header.
+- `ERRIUM_TRUST_REQUEST_ID=true` reuses a valid inbound `X-Request-ID` as the `trace_id`
+  (default off; the id stays a fresh uuid4).
 - `errium.install(app, *, debug=None)`: one-call FastAPI setup (middleware + `HTTPException` and
   `RequestValidationError` handlers, one shared engine on `app.state`). Idempotent and safe on
   mounted sub-apps; call it for each mounted app. The old two-line setup keeps working.

@@ -1,5 +1,6 @@
 """The shared classify -> format path every adapter funnels exceptions through."""
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -10,7 +11,13 @@ from errium_core.config.settings import get_settings
 from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.base import ErrorFormatter
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.tracing.trace import (
+    TRACE_ID_HEADER,
+    generate_trace_id,
+    set_current_trace_id,
+)
+
+logger = logging.getLogger("errium")
 
 GENERIC_MESSAGE = "An unexpected error occurred."
 
@@ -51,7 +58,42 @@ def fallback_error(
             }
     except Exception:
         pass
-    return HandledError(status_code=500, body=body, trace_id=trace_id)
+    return HandledError(
+        status_code=500,
+        body=body,
+        trace_id=trace_id,
+        headers={TRACE_ID_HEADER: trace_id},
+    )
+
+
+def _log(
+    exc: BaseException,
+    status_code: int,
+    category: str,
+    trace_id: str,
+    method: str | None,
+    path: str | None,
+) -> None:
+    """Log a handled exception on the `errium` logger; never raises.
+
+    >= 500 logs at ERROR with the traceback, anything else at WARNING without one.
+    Errium never configures handlers - the application decides where logs go.
+    """
+    try:
+        request = f"{method or '-'} {path or '-'}"
+        message = "%s -> %d %s trace_id=%s"
+        args = (request, status_code, category, trace_id)
+        extra = {
+            "errium_trace_id": trace_id,
+            "errium_status_code": status_code,
+            "errium_category": category,
+        }
+        if status_code >= 500:
+            logger.error(message, *args, exc_info=exc, extra=extra)
+        else:
+            logger.warning(message, *args, extra=extra)
+    except Exception:
+        pass
 
 
 def handle_error(
@@ -62,6 +104,8 @@ def handle_error(
     details: DetailsSource = None,
     headers: Mapping[str, str] | None = None,
     trace_id: str | None = None,
+    method: str | None = None,
+    path: str | None = None,
 ) -> HandledError:
     """Classify `exc` and render the standard envelope. Never raises.
 
@@ -69,6 +113,7 @@ def handle_error(
     `INTERNAL_SERVER_ERROR` envelope with a fresh trace id is returned instead.
     """
     trace_id = trace_id or generate_trace_id()
+    set_current_trace_id(trace_id)
     try:
         classified = engine.classify(exc)
         resolved_details = details() if callable(details) else details
@@ -81,11 +126,22 @@ def handle_error(
             details=dict(resolved_details) if resolved_details is not None else None,
             exception=exc,
         )
+        body = formatter.format(error)
+        response_headers = {**(headers or {}), TRACE_ID_HEADER: trace_id}
+        _log(
+            exc,
+            classified.status_code,
+            str(classified.category),
+            trace_id,
+            method,
+            path,
+        )
         return HandledError(
             status_code=classified.status_code,
-            body=formatter.format(error),
+            body=body,
             trace_id=trace_id,
-            headers=dict(headers or {}),
+            headers=response_headers,
         )
     except Exception:
+        _log(exc, 500, ErrorCategory.INTERNAL.value, trace_id, method, path)
         return fallback_error(exc, trace_id)

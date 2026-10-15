@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import fallback_error, handle_error
+from errium_core.tracing.trace import resolve_trace_id, set_current_trace_id
 from errium_drf.classifiers import (
     DjangoHttp404Classifier,
     DjangoPermissionDeniedClassifier,
@@ -23,6 +24,22 @@ _engine.register(DjangoPermissionDeniedClassifier())
 _formatter = DefaultFormatter()
 
 
+def _request_trace_id(request: Any) -> str | None:
+    """Assign the request's trace id once; exposed as `request.errium_trace_id`."""
+    if request is None:
+        return None
+    existing = getattr(request, "errium_trace_id", None)
+    if isinstance(existing, str):
+        return existing
+    trace_id = resolve_trace_id(request.META.get("HTTP_X_REQUEST_ID"))
+    # `request` is DRF's wrapper; set it on the underlying HttpRequest too so
+    # plain Django code (middleware, templates) sees the same attribute.
+    for target in (request, getattr(request, "_request", request)):
+        target.errium_trace_id = trace_id
+    set_current_trace_id(trace_id)
+    return trace_id
+
+
 def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
     """DRF EXCEPTION_HANDLER entry point.
 
@@ -36,6 +53,8 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
     handling. Because this handler always returns a Response, every exception
     raised inside a DRF view gets Errium's standardized JSON contract instead.
     """
+    request = context.get("request") if isinstance(context, dict) else None
+
     # Beautify DRF's raw ValidationError.detail tree into a flat
     # field->message dict, mirroring the other adapters' `details` field.
     details = None
@@ -62,6 +81,9 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
         formatter=_formatter,
         details=details,
         headers=headers,
+        trace_id=_request_trace_id(request),
+        method=getattr(request, "method", None),
+        path=getattr(request, "path", None),
     )
     try:
         return Response(
@@ -69,4 +91,6 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
         )
     except Exception:
         generic = fallback_error(None, handled.trace_id)
-        return Response(generic.body, status=generic.status_code)
+        return Response(
+            generic.body, status=generic.status_code, headers=generic.headers
+        )

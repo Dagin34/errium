@@ -4,7 +4,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from errium.engine import build_engine
+from errium.engine import build_engine, request_trace_id
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import HandledError, fallback_error, handle_error
 
@@ -34,6 +34,7 @@ class ErriumMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        trace_id = request_trace_id(request)
         try:
             return await call_next(request)
 
@@ -43,5 +44,8 @@ class ErriumMiddleware(BaseHTTPMiddleware):
                     exc,
                     engine=self.classification_engine,
                     formatter=self.formatter,
+                    trace_id=trace_id,
+                    method=request.method,
+                    path=request.url.path,
                 )
             )
