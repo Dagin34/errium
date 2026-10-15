@@ -135,17 +135,23 @@ client-facing response with server-side logs.
 
 ## Adapter: FastAPI (`errium`)
 
-Two independent entry points exist because Starlette resolves `RequestValidationError`
-differently from other exceptions:
+`errium.install(app)` wires all of the following in one call (and is safe on mounted sub-apps —
+call it for each one). Three entry points exist because Starlette resolves `RequestValidationError`
+and `HTTPException` *inside* user middleware, differently from other exceptions:
 
 1. **`ErriumMiddleware`** (`middleware/error_middleware.py`) — a Starlette `BaseHTTPMiddleware`
    that wraps `call_next` in try/except, catching anything that escapes normal request handling
    (uncaught exceptions and `HTTPException`s). Registers `FastAPIHTTPExceptionClassifier`
    (priority 200) and `FastAPIValidationErrorClassifier` (priority 210).
-2. **`validation_exception_handler`** (`handlers/validation_handler.py`) — registered separately
+2. **`http_exception_handler`** (`handlers/http_handler.py`) — registered for
+   `starlette.exceptions.HTTPException`. Starlette's `ExceptionMiddleware` turns `HTTPException`
+   (including the router's 404/405) into a response before `ErriumMiddleware` can see it, so this
+   handler is what makes `FastAPIHTTPExceptionClassifier` reachable. It preserves `exc.headers`
+   and flattens a dict/list `detail` into `details`.
+3. **`validation_exception_handler`** (`handlers/validation_handler.py`) — registered separately
    via `app.add_exception_handler(RequestValidationError, ...)`, because FastAPI resolves
    `RequestValidationError` through its own exception-handler mechanism rather than letting it
-   propagate through middleware. It builds its own `ClassificationEngine`, classifies the error,
+   propagate through middleware. It classifies the error with the app's shared engine (`app.state.errium_engine`),
    and additionally runs `ValidationNormalizer` on `exc.errors()` to produce beautified `details`.
 
 `errium/classifiers.py` holds `FastAPIHTTPExceptionClassifier` (matches

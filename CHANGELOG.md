@@ -9,6 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- FastAPI: `HTTPException`, unknown-route 404, 405 and body-parse 400 responses are now Errium
+  envelopes instead of raw `{"detail": ...}`, and `HTTPException(500, "secret")` no longer leaks
+  its message in production. Register `errium.handlers.http_handler.http_exception_handler` for
+  `HTTPException` (or just call `errium.install(app)`).
+
 - The error path can no longer raise. Exceptions whose `__str__`/`__repr__` fails, or whose
   arguments are unprintable, now produce the standard JSON envelope on every adapter (previously
   FastAPI/Django/Flask fell back to their own non-JSON 500 pages). A last-resort handler returns a
@@ -32,6 +37,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `errium.install(app, *, debug=None)`: one-call FastAPI setup (middleware + `HTTPException` and
+  `RequestValidationError` handlers, one shared engine on `app.state`). Idempotent and safe on
+  mounted sub-apps; call it for each mounted app. The old two-line setup keeps working.
+- `errium.handlers.http_handler.http_exception_handler`, preserving exception headers.
 - `errium_core.safe.safe_str(exc, limit=2000)`: renders an exception as text without ever raising
   (`str` -> `repr` -> class name) and truncates the result. `debug.message` now uses it.
 - `errium_core.pipeline.handle_error`: the single classify -> format path shared by all adapters.

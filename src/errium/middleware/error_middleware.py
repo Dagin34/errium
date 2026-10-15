@@ -4,11 +4,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
 
-from errium.classifiers import (
-    FastAPIHTTPExceptionClassifier,
-    FastAPIValidationErrorClassifier,
-)
-from errium_core.classifiers.engine import ClassificationEngine
+from errium.engine import build_engine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import HandledError, fallback_error, handle_error
 
@@ -30,10 +26,8 @@ class ErriumMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp) -> None:
         super().__init__(app)
 
-        self.classification_engine = ClassificationEngine()
-        # Register FastAPI classifiers for high-priority handling
-        self.classification_engine.register(FastAPIHTTPExceptionClassifier())
-        self.classification_engine.register(FastAPIValidationErrorClassifier())
+        # Pre-loaded with the FastAPI classifiers for high-priority handling
+        self.classification_engine = build_engine()
 
         self.formatter = DefaultFormatter()
 

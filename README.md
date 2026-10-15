@@ -68,24 +68,44 @@ All five packages ship a `py.typed` marker, so type checkers see Errium's annota
 
 ## 🛠️ Usage Example
 
-Integrating Errium into your FastAPI codebase takes less than two lines:
+Integrating Errium into your FastAPI codebase takes one line:
 
 ```python
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from errium import ErriumMiddleware
-from errium.handlers.validation_handler import validation_exception_handler
+import errium
 
 app = FastAPI()
 
-# 1. Add Middleware to catch raw & HTTP exceptions
-app.add_middleware(ErriumMiddleware)
-
-# 2. Add validation exception handler to capture validation errors
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+# Adds the middleware (uncaught exceptions) and registers handlers for
+# HTTPException (including routing 404/405) and request validation errors.
+errium.install(app)
 
 # Your endpoints go here...
 ```
+
+`errium.install(app)` is equivalent to the manual wiring below, which still works but also needs
+the `HTTPException` handler to normalise `HTTPException`s (Starlette resolves those *inside*
+user middleware, so the middleware alone never sees them):
+
+```python
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException
+from errium import ErriumMiddleware
+from errium.handlers.http_handler import http_exception_handler
+from errium.handlers.validation_handler import validation_exception_handler
+
+app.add_middleware(ErriumMiddleware)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+```
+
+**Mounted sub-apps** (`app.mount("/v1", v1_app)`) do not inherit the parent's middleware or
+handlers: call `errium.install(v1_app)` on each mounted app.
+
+A structured `HTTPException(detail={...})` / `detail=[...]` keeps `message` as the HTTP phrase
+(e.g. "Bad Request") and exposes the value in `details` (dict entries as `{key: str(value)}`, list
+items as `{"0": ..., "1": ...}`). Headers set on the exception (`Retry-After`, `WWW-Authenticate`,
+`X-*`) are preserved.
 
 Flask is supported too, via the `errium[flask]` extra:
 
