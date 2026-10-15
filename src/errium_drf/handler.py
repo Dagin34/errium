@@ -1,10 +1,13 @@
+from collections.abc import Callable
 from typing import Any
 
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 
+from errium_core.classifiers.base import ExceptionClassifier
 from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
+from errium_core.classifiers.loader import load_classifiers
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import fallback_error, handle_error
 from errium_core.tracing.trace import resolve_trace_id, set_current_trace_id
@@ -16,14 +19,37 @@ from errium_drf.classifiers import (
 )
 from errium_drf.normalizers import flatten_drf_errors
 
-_engine = ClassificationEngine()
-_engine.register(DRFValidationErrorClassifier())
-_engine.register(DRFAPIExceptionClassifier())
-_engine.register(DjangoHttp404Classifier())
-_engine.register(DjangoPermissionDeniedClassifier())
-_engine.register(DjangoExceptionClassifier(validation_status=400))
-
 _formatter = DefaultFormatter()
+_default_engine: ClassificationEngine | None = None
+
+
+def build_engine(
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> ClassificationEngine:
+    """Build a ClassificationEngine pre-loaded with the DRF/Django classifiers."""
+    engine = ClassificationEngine(classifiers)
+    engine.register(DRFValidationErrorClassifier())
+    engine.register(DRFAPIExceptionClassifier())
+    engine.register(DjangoHttp404Classifier())
+    engine.register(DjangoPermissionDeniedClassifier())
+    engine.register(DjangoExceptionClassifier(validation_status=400))
+    return engine
+
+
+def _settings_classifiers() -> list[ExceptionClassifier]:
+    """Classifiers listed in `settings.ERRIUM["CLASSIFIERS"]` (dotted paths)."""
+    from django.conf import settings
+
+    config = getattr(settings, "ERRIUM", None) or {}
+    return load_classifiers(list(config.get("CLASSIFIERS", [])))
+
+
+def get_default_engine() -> ClassificationEngine:
+    """The engine `errium_exception_handler` uses, built lazily from settings."""
+    global _default_engine
+    if _default_engine is None:
+        _default_engine = build_engine(_settings_classifiers())
+    return _default_engine
 
 
 def _request_trace_id(request: Any) -> str | None:
@@ -42,7 +68,9 @@ def _request_trace_id(request: Any) -> str | None:
     return trace_id
 
 
-def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
+def _handle(
+    exc: Exception, context: dict[str, Any], engine: ClassificationEngine
+) -> Response:
     """DRF EXCEPTION_HANDLER entry point.
 
     Point REST_FRAMEWORK["EXCEPTION_HANDLER"] at this function's dotted path
@@ -79,7 +107,7 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
 
     handled = handle_error(
         exc,
-        engine=_engine,
+        engine=engine,
         formatter=_formatter,
         details=details,
         headers=headers,
@@ -96,3 +124,32 @@ def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Respons
         return Response(
             generic.body, status=generic.status_code, headers=generic.headers
         )
+
+
+def errium_exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
+    """DRF EXCEPTION_HANDLER entry point (see `_handle` for what it does).
+
+    Custom classifiers can be listed in settings::
+
+        ERRIUM = {"CLASSIFIERS": ["myapp.errors.QuotaClassifier"]}
+
+    or registered process-wide with `errium_core.register(...)`. For explicit
+    control use `make_exception_handler(engine=...)`.
+    """
+    return _handle(exc, context, get_default_engine())
+
+
+def make_exception_handler(
+    engine: ClassificationEngine | None = None,
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> Callable[[Exception, dict[str, Any]], Response]:
+    """Build an EXCEPTION_HANDLER bound to its own engine.
+
+    `classifiers` extend the default DRF engine; `engine` replaces it.
+    """
+    bound = engine or build_engine(classifiers)
+
+    def exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
+        return _handle(exc, context, bound)
+
+    return exception_handler

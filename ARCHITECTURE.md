@@ -90,10 +90,14 @@ follows this same pattern and reuses `errium_core` untouched.
   `WerkzeugHTTPExceptionClassifier`, `NinjaHttpErrorClassifier`, and `DRFAPIExceptionClassifier`
   all use this so the mapping is defined once.
 
-Each adapter entry point (the FastAPI middleware, the FastAPI validation handler, the Flask
-extension, the Ninja registration function, the DRF exception handler) constructs its **own**
-`ClassificationEngine` instance rather than sharing one. A custom classifier meant to apply
-everywhere needs to be registered on each entry point.
+Custom classifiers: `errium_core/registry.py` holds a process-wide registry
+(`register(...)` / `register_classifier(...)`) that every `ClassificationEngine` merges in at
+classification time, so one registration applies to every adapter and entry point. Each adapter
+also takes `classifiers=` (added to its default engine) and `engine=` (replaces it); each package
+exposes `build_engine()` for the default. The FastAPI middleware, `HTTPException` handler and
+validation handler share one engine through `app.state.errium_engine`; DRF reads
+`settings.ERRIUM["CLASSIFIERS"]` (dotted paths, loaded by `classifiers/loader.py`) or accepts
+`make_exception_handler(engine=...)`.
 
 ### Formatting (`errium_core/formatters/`)
 

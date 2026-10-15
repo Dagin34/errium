@@ -5,6 +5,8 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from errium.engine import build_engine, request_trace_id
+from errium_core.classifiers.base import ExceptionClassifier
+from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import HandledError, fallback_error, handle_error
 
@@ -23,11 +25,20 @@ def to_json_response(handled: HandledError) -> JSONResponse:
 
 
 class ErriumMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        classifiers: list[ExceptionClassifier] | None = None,
+        engine: ClassificationEngine | None = None,
+    ) -> None:
+        """Create the middleware.
+
+        `classifiers` are added to the default FastAPI engine; `engine` replaces
+        it entirely (you then own registering the FastAPI classifiers).
+        """
         super().__init__(app)
 
-        # Pre-loaded with the FastAPI classifiers for high-priority handling
-        self.classification_engine = build_engine()
+        self.classification_engine = engine or build_engine(classifiers)
 
         self.formatter = DefaultFormatter()
 
@@ -35,6 +46,10 @@ class ErriumMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         trace_id = request_trace_id(request)
+        # Let the HTTPException / validation handlers share this middleware's
+        # engine, so a custom classifier applies everywhere in the app.
+        if getattr(request.app.state, "errium_engine", None) is None:
+            request.app.state.errium_engine = self.classification_engine
         try:
             return await call_next(request)
 

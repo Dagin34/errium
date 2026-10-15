@@ -5,6 +5,7 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.errors import ValidationError as NinjaValidationError
 
+from errium_core.classifiers.base import ExceptionClassifier
 from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
@@ -50,7 +51,24 @@ def _request_trace_id(request: HttpRequest) -> str:
     return trace_id
 
 
-def register_errium(api: NinjaAPI) -> None:
+def build_engine(
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> ClassificationEngine:
+    """Build a ClassificationEngine pre-loaded with the Ninja/Django classifiers."""
+    engine = ClassificationEngine(classifiers)
+    engine.register(NinjaValidationErrorClassifier())
+    engine.register(NinjaHttpErrorClassifier())
+    engine.register(DjangoHttp404Classifier())
+    engine.register(NinjaResponseValidationClassifier())
+    engine.register(DjangoExceptionClassifier(validation_status=422))
+    return engine
+
+
+def register_errium(
+    api: NinjaAPI,
+    classifiers: list[ExceptionClassifier] | None = None,
+    engine: ClassificationEngine | None = None,
+) -> None:
     """Register Errium's exception handlers on a NinjaAPI instance.
 
     Overrides Ninja's built-in default handlers for ValidationError, HttpError,
@@ -61,12 +79,8 @@ def register_errium(api: NinjaAPI) -> None:
     returns a standardized JSON response, deferring to Errium's own
     `ERRIUM_DEBUG` setting for sanitization.
     """
-    engine = ClassificationEngine()
-    engine.register(NinjaValidationErrorClassifier())
-    engine.register(NinjaHttpErrorClassifier())
-    engine.register(DjangoHttp404Classifier())
-    engine.register(NinjaResponseValidationClassifier())
-    engine.register(DjangoExceptionClassifier(validation_status=422))
+    # `classifiers` extend the default engine; `engine` replaces it.
+    engine = engine or build_engine(classifiers)
 
     formatter = DefaultFormatter()
     normalizer = ValidationNormalizer()

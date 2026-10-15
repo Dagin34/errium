@@ -2,6 +2,7 @@ from flask import Flask, g, jsonify, request
 from flask.typing import ResponseReturnValue
 from pydantic import ValidationError as PydanticValidationError
 
+from errium_core.classifiers.base import ExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
@@ -12,6 +13,15 @@ from errium_core.tracing.trace import (
     set_current_trace_id,
 )
 from errium_flask.classifiers import WerkzeugHTTPExceptionClassifier
+
+
+def build_engine(
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> ClassificationEngine:
+    """Build a ClassificationEngine pre-loaded with the Flask/Werkzeug classifier."""
+    engine = ClassificationEngine(classifiers)
+    engine.register(WerkzeugHTTPExceptionClassifier())
+    return engine
 
 
 class ErriumFlask:
@@ -26,10 +36,14 @@ class ErriumFlask:
         errium.init_app(app)
     """
 
-    def __init__(self, app: Flask | None = None) -> None:
-        self.classification_engine = ClassificationEngine()
-        # Register Flask/Werkzeug classifier for high-priority handling
-        self.classification_engine.register(WerkzeugHTTPExceptionClassifier())
+    def __init__(
+        self,
+        app: Flask | None = None,
+        classifiers: list[ExceptionClassifier] | None = None,
+        engine: ClassificationEngine | None = None,
+    ) -> None:
+        """`classifiers` are added to the default engine; `engine` replaces it."""
+        self.classification_engine = engine or build_engine(classifiers)
 
         self.formatter = DefaultFormatter()
         self.normalizer = ValidationNormalizer()

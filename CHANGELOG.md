@@ -41,6 +41,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Public classifier registration on every adapter. `errium.register(MyError, status=409,
+  message=...)` (also usable as a class decorator) registers process-wide for all adapters via the
+  new `errium_core.registry`. `ErriumMiddleware(app, classifiers=..., engine=...)`,
+  `errium.install(app, classifiers=..., engine=...)`, `ErriumFlask(app, classifiers=...,
+  engine=...)`, `register_errium(api, classifiers=..., engine=...)`, DRF's
+  `make_exception_handler(...)` and `settings.ERRIUM["CLASSIFIERS"]`, and a `build_engine()` per
+  adapter. The FastAPI middleware and handlers now share one engine. Old call forms keep working.
 - New `errium_django` package for errors outside the Ninja/DRF view layer: `handler400`,
   `handler403`, `handler404`, `handler500` URLconf handlers and `ErriumDjangoMiddleware`. Unknown
   URLs, URL-converter mismatches, Ninja's own 405, and exceptions in Django middleware now return

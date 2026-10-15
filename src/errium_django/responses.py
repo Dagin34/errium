@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
+from errium_core.classifiers.loader import load_classifiers
 from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
@@ -20,7 +21,12 @@ _formatter = DefaultFormatter()
 def get_engine() -> ClassificationEngine:
     global _engine
     if _engine is None:
-        _engine = ClassificationEngine()
+        from django.conf import settings
+
+        config = getattr(settings, "ERRIUM", None) or {}
+        _engine = ClassificationEngine(
+            load_classifiers(list(config.get("CLASSIFIERS", [])))
+        )
         _engine.register(Resolver404Classifier())
         _engine.register(DjangoExceptionClassifier(validation_status=422))
     return _engine

@@ -164,6 +164,39 @@ That's it — every exception raised inside a DRF view (`APIException` family, D
 Note: validation errors keep DRF's own `400` status code rather than the `422` the other adapters
 use, matching DRF's established convention.
 
+### Custom classifiers
+
+Map your own exception types to a status, category and message. The one-liner works on every
+adapter at once (it is a process-wide registry consulted by all engines):
+
+```python
+import errium
+
+class OutOfStock(Exception): ...
+
+errium.register(OutOfStock, status=409, message="That item is out of stock.")
+
+# or, as a class decorator (category defaults to the standard one for the status):
+@errium.register(status=429, category="RATE_LIMITED")
+class SlowDown(Exception): ...
+```
+
+For full control, write a classifier (`priority` property + `classify(exc) -> ClassifiedError | None`)
+and pass it to the adapter. Higher priority runs first; built-in adapter classifiers are 200+,
+`register(...)` uses 300.
+
+| Adapter | How to pass classifiers |
+|---|---|
+| FastAPI | `errium.install(app, classifiers=[...])`, or `app.add_middleware(ErriumMiddleware, classifiers=[...])` |
+| Flask | `ErriumFlask(app, classifiers=[...])` |
+| Django Ninja | `register_errium(api, classifiers=[...])` |
+| DRF | `REST_FRAMEWORK["EXCEPTION_HANDLER"] = "errium_drf.errium_exception_handler"` plus `ERRIUM = {"CLASSIFIERS": ["myapp.errors.QuotaClassifier"]}`, or `make_exception_handler(classifiers=[...])` |
+| errium_django | `ERRIUM = {"CLASSIFIERS": [...]}` in Django settings |
+
+Every adapter also takes `engine=` to replace the default `ClassificationEngine` outright
+(`build_engine(...)` in each adapter package builds the default one). On FastAPI, one engine is
+shared by the middleware and both exception handlers.
+
 ### Trace IDs and logging
 
 Every error response carries a `trace_id` (also sent as an `X-Trace-Id` response header), and
