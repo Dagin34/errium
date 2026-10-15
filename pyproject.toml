@@ -40,6 +40,7 @@ dependencies = [
 flask = ["flask>=3.0.0"]
 ninja = ["django-ninja>=1.3.0"]
 drf = ["djangorestframework>=3.15.0"]
+django = ["django>=4.2"]
 
 [build-system]
 requires = ["hatchling"]
@@ -74,7 +75,7 @@ module = "rest_framework.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["src/errium", "src/errium_core", "src/errium_flask", "src/errium_ninja", "src/errium_drf"]
+source = ["src/errium", "src/errium_core", "src/errium_flask", "src/errium_ninja", "src/errium_drf", "src/errium_django"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
@@ -88,7 +89,8 @@ packages = [
     "src/errium_core",
     "src/errium_flask",
     "src/errium_ninja",
-    "src/errium_drf"
+    "src/errium_drf",
+    "src/errium_django"
 ]
 
 [dependency-groups]

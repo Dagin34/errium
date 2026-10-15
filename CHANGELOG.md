@@ -41,6 +41,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- New `errium_django` package for errors outside the Ninja/DRF view layer: `handler400`,
+  `handler403`, `handler404`, `handler500` URLconf handlers and `ErriumDjangoMiddleware`. Unknown
+  URLs, URL-converter mismatches, Ninja's own 405, and exceptions in Django middleware now return
+  the Errium envelope for clients that prefer JSON (or paths under `ERRIUM_JSON_PATH_PREFIXES`,
+  default `["/api/"]`); HTML clients keep Django's pages. New `django` extra.
 - Django-native exceptions are classified on Ninja and DRF instead of collapsing to 500:
   `PermissionDenied` -> 403, `SuspiciousOperation` -> 400 `BAD_REQUEST`,
   `RequestDataTooBig`/`TooManyFieldsSent`/`TooManyFilesSent` -> 413 `PAYLOAD_TOO_LARGE`,

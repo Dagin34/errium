@@ -299,6 +299,23 @@ object:
   headers, mirroring what DRF's own default handler does — otherwise a 401 challenge response
   would be missing the header clients rely on to know how to authenticate.
 
+## Django helpers (`errium_django`)
+
+Not an exception-handling adapter in the sense of the others (it has no registration call): it
+covers what happens *outside* a Ninja/DRF view, which those adapters cannot see.
+- `handler400/403/404/500` (`handlers.py`) — URLconf handlers rendering the JSON envelope when
+  `negotiation.wants_json(request)` (client prefers JSON via `Accept`, or the path matches
+  `ERRIUM_JSON_PATH_PREFIXES`, default `["/api/"]`), else delegating to `django.views.defaults`.
+  `handler500` reads the exception from `sys.exc_info()` (Django calls it inside its `except`).
+  A `Resolver404` gets a fixed message because Django's lists every URL pattern it tried.
+- `ErriumDjangoMiddleware` (`middleware.py`) — assigns the trace id up front, converts
+  `process_exception` hits from plain views, replaces the bare 500 page Django makes from
+  *later* middleware's exceptions (it records them via the `got_request_exception` signal, since
+  Django wraps each middleware layer in its own `convert_exception_to_response`), and turns
+  `HttpResponseNotAllowed` into a 405 envelope with the `Allow` header.
+- It builds its own engine (`DjangoExceptionClassifier` + `Resolver404Classifier`) and depends
+  only on `errium_core` and Django.
+
 ## Response contract
 
 Every adapter produces the same JSON shape:

@@ -182,6 +182,35 @@ anywhere in the request's context. Set `ERRIUM_TRUST_REQUEST_ID=true` to reuse a
 `X-Request-ID` (≤128 characters of letters, digits and `._:-`) as the `trace_id`; by default a
 fresh uuid4 is generated.
 
+### Django project setup: errors outside the view layer
+
+Ninja's and DRF's handlers only see exceptions raised *inside* their views. An unknown URL, a URL
+converter mismatch (`/item/abc/` for `<int:pk>`), Ninja's own 405, and an exception in a Django
+middleware are rendered by Django itself as HTML. Cover them with the `errium_django` helpers
+(`pip install "errium[django]"`, or the `ninja`/`drf` extras):
+
+```python
+# urls.py (root URLconf)
+handler400 = "errium_django.handler400"
+handler403 = "errium_django.handler403"
+handler404 = "errium_django.handler404"
+handler500 = "errium_django.handler500"
+
+# settings.py
+MIDDLEWARE = [
+    "errium_django.ErriumDjangoMiddleware",  # first, so it wraps everything below
+    # ...
+]
+ERRIUM_JSON_PATH_PREFIXES = ["/api/"]  # optional; this is the default
+```
+
+A request gets the JSON envelope only if it prefers JSON (`Accept: application/json`) or its path
+starts with one of `ERRIUM_JSON_PATH_PREFIXES`; browsers and other HTML clients still get Django's
+normal error pages. `ErriumDjangoMiddleware` also converts exceptions raised by *later* middleware
+and plain Django views, and turns a bare 405 (Ninja's method check) into the envelope while keeping
+its `Allow` header. Exceptions in middleware listed *before* it are only covered by
+`handler500`. Django's technical 500 page replaces `handler500` while `DEBUG = True`.
+
 ---
 
 ## 🔍 Before vs. After
