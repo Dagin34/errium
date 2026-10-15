@@ -138,6 +138,14 @@ filter or application code can attach it to its own log lines. Adapters assign t
 request and expose it as `request.state.errium_trace_id` (FastAPI), `flask.g.errium_trace_id`
 (Flask) or `request.errium_trace_id` (Django Ninja / DRF).
 
+### Protocol headers (`errium_core/headers.py`)
+
+`protocol_headers(exc)` collects an allow-list (`Allow`, `Retry-After`, `WWW-Authenticate`,
+`Location`, `Content-Range`) from `exc.get_headers()` (Werkzeug), `exc.headers` and
+`exc.response.headers`, rejecting values containing CR/LF. `handle_error` merges them into the
+response headers, so Werkzeug's `Retry-After`/`Allow` and any `headers` attribute on a Ninja
+`HttpError` subclass survive. Headers passed explicitly by an adapter win.
+
 ### Pipeline and logging (`errium_core/pipeline.py`)
 
 `handle_error(exc, engine=..., formatter=..., details=..., headers=..., trace_id=...)` is the

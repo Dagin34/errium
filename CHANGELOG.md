@@ -37,6 +37,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Protocol headers on exceptions are preserved on the error response across adapters: `Allow`,
+  `Retry-After`, `WWW-Authenticate`, `Location` and `Content-Range`, read from
+  `exc.get_headers()`, `exc.headers` and `exc.response.headers`. Fixes Flask dropping
+  `Retry-After` (429) and `Allow` (405). Other headers are not copied.
 - Every handled exception is now logged on the `errium` logger (`ERROR` + traceback for >= 500,
   one-line `WARNING` for 4xx) with `trace_id`, status, category, method and path, so the
   `trace_id` a client reports can be matched to a log line. Errium still configures no handlers.

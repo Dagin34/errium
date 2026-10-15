@@ -11,6 +11,7 @@ from errium_core.config.settings import get_settings
 from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.base import ErrorFormatter
+from errium_core.headers import protocol_headers
 from errium_core.tracing.trace import (
     TRACE_ID_HEADER,
     generate_trace_id,
@@ -127,7 +128,11 @@ def handle_error(
             exception=exc,
         )
         body = formatter.format(error)
-        response_headers = {**(headers or {}), TRACE_ID_HEADER: trace_id}
+        response_headers = {
+            **protocol_headers(exc),
+            **(headers or {}),
+            TRACE_ID_HEADER: trace_id,
+        }
         _log(
             exc,
             classified.status_code,
