@@ -1,6 +1,9 @@
 from typing import Any
 
-NON_FIELD_ERRORS_KEY = "non_field_errors"
+# DRF's own key for errors not tied to one field (api_settings.NON_FIELD_ERRORS_KEY)
+DRF_NON_FIELD_ERRORS_KEY = "non_field_errors"
+# What Errium exposes instead, so a DRF internal name does not leak into `details`.
+NON_FIELD_ERRORS_KEY = "_"
 
 
 def flatten_drf_errors(detail: Any, prefix: str = "") -> dict[str, str]:
@@ -16,7 +19,8 @@ def flatten_drf_errors(detail: Any, prefix: str = "") -> dict[str, str]:
 
     if isinstance(detail, dict):
         for key, value in detail.items():
-            field_key = f"{prefix}.{key}" if prefix else str(key)
+            name = NON_FIELD_ERRORS_KEY if key == DRF_NON_FIELD_ERRORS_KEY else str(key)
+            field_key = f"{prefix}.{name}" if prefix else name
             flattened.update(flatten_drf_errors(value, field_key))
         return flattened
 
@@ -25,7 +29,7 @@ def flatten_drf_errors(detail: Any, prefix: str = "") -> dict[str, str]:
         nested = [item for item in detail if isinstance(item, dict | list)]
 
         if messages:
-            flattened[prefix or NON_FIELD_ERRORS_KEY] = " ".join(messages)
+            flattened[prefix or NON_FIELD_ERRORS_KEY] = "; ".join(messages)
 
         for index, item in enumerate(nested):
             item_key = f"{prefix}[{index}]" if prefix else str(index)

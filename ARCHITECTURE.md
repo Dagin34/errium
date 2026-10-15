@@ -113,6 +113,15 @@ validation handler share one engine through `app.state.errium_engine`; DRF reads
     message, a full formatted stack trace, and a short list of contextual hints keyed off the
     status code (e.g. "Check the 'details' field..." for 422).
 
+### Size limits (`errium_core/limits.py`)
+
+`DefaultFormatter` bounds every response: `details` ≤ 50 entries (keys ≤ 200 chars, string
+values ≤ 500) plus a `"_truncated": "N more"` sentinel only when something was dropped;
+`debug.message` ≤ 2,000 chars; `debug.stack_trace` ≤ 20,000 (tail kept). For validation errors
+(anything with an `errors()` list of `loc`/`msg`/`type`) the debug message and the stack trace's
+final line are rebuilt from those three keys only, so submitted `input`/`ctx` values never echo
+back.
+
 ### Normalization (`errium_core/normalizers/validation.py`)
 
 `ValidationNormalizer.normalize(errors)` turns a raw Pydantic/FastAPI `errors()` list (dicts with
@@ -294,8 +303,9 @@ object:
   one field's messages or per-item errors on a `many=True` serializer) into the same flat
   `{field_path: message}` shape the other adapters produce — no template-mapping needed since
   DRF's `ErrorDetail` strings are already human-readable. Multiple messages for one field are
-  joined with a space; non-field errors (a bare list with no dict wrapper) land under
-  `"non_field_errors"`.
+  joined with `"; "`; non-field errors (a bare list with no dict wrapper, or DRF's own
+  `non_field_errors` key at any depth) land under `"_"` (`"address._"` when nested), so DRF's
+  internal key name does not leak.
 - **Auth/throttle headers**: `APIView.handle_exception` sets `exc.auth_header` (for
   `NotAuthenticated`/`AuthenticationFailed`, when an authenticator is configured) and `exc.wait`
   (for `Throttled`) on the exception *before* calling the exception handler.

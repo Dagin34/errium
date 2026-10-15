@@ -26,7 +26,7 @@ def test_flatten_nested_serializer_errors():
 def test_flatten_non_field_errors():
     detail = [ErrorDetail("Passwords do not match.", code="invalid")]
     result = flatten_drf_errors(detail)
-    assert result == {"non_field_errors": "Passwords do not match."}
+    assert result == {"_": "Passwords do not match."}
 
 
 def test_flatten_multiple_messages_for_one_field_are_joined():
@@ -37,7 +37,7 @@ def test_flatten_multiple_messages_for_one_field_are_joined():
         ]
     }
     result = flatten_drf_errors(detail)
-    assert result == {"password": "Too short. Must contain a digit."}
+    assert result == {"password": "Too short.; Must contain a digit."}
 
 
 def test_flatten_list_serializer_many_errors():

@@ -22,6 +22,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Response sizes are bounded. `details` is capped at 50 entries (keys 200 chars, messages 500);
+  when entries are dropped a `"_truncated": "N more"` key is added (absent otherwise).
+  `debug.message` is capped at 2,000 characters and `debug.stack_trace` at 20,000 (the tail is
+  kept).
+- Debug output for validation errors no longer echoes the request: `debug.message` and
+  `debug.stack_trace` list only `loc`, `msg` and `type`, never the submitted `input`/`ctx` (a
+  1 MB body used to come back as a 2 MB response and could contain passwords).
+- DRF `details`: errors not tied to a field use the key `_` instead of `non_field_errors`
+  (also `address._` for nested serializers), and several messages for one field are joined with
+  `"; "` instead of a space. Per-framework message wording is unchanged. **Breaking for clients
+  that read `details.non_field_errors`.**
 - Ninja: a bare pydantic `ValidationError` raised from a view - typically Ninja validating the
   endpoint's return value against its `response=` schema - is now `500 INTERNAL_SERVER_ERROR`
   instead of `422 VALIDATION_ERROR`, since it is a server bug the client cannot fix. Request
