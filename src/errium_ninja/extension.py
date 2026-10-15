@@ -5,6 +5,7 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.errors import ValidationError as NinjaValidationError
 
+from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
@@ -13,6 +14,7 @@ from errium_core.tracing.trace import resolve_trace_id, set_current_trace_id
 from errium_ninja.classifiers import (
     DjangoHttp404Classifier,
     NinjaHttpErrorClassifier,
+    NinjaResponseValidationClassifier,
     NinjaValidationErrorClassifier,
 )
 
@@ -63,6 +65,8 @@ def register_errium(api: NinjaAPI) -> None:
     engine.register(NinjaValidationErrorClassifier())
     engine.register(NinjaHttpErrorClassifier())
     engine.register(DjangoHttp404Classifier())
+    engine.register(NinjaResponseValidationClassifier())
+    engine.register(DjangoExceptionClassifier(validation_status=422))
 
     formatter = DefaultFormatter()
     normalizer = ValidationNormalizer()

@@ -66,11 +66,18 @@ follows this same pattern and reuses `errium_core` untouched.
   anything named `RequestValidationError`, mapping to `VALIDATION_ERROR` / 422 — except when
   every error is a `json_invalid` one (the body is not parseable JSON), which is
   `BAD_REQUEST` / 400 "Malformed request body." on every adapter.
-- `DatabaseExceptionClassifier` (`database.py`) — matches SQLAlchemy exceptions by walking the
-  exception class's MRO for a `sqlalchemy.` module path (no SQLAlchemy dependency). An
-  `IntegrityError` whose message looks like a uniqueness violation (`unique constraint`,
+- `DatabaseExceptionClassifier` (`database.py`) — matches database exceptions by walking the
+  exception class's MRO for a module path under `sqlalchemy`, `django.db`, `sqlite3`, `psycopg`,
+  `psycopg2`, `asyncpg`, `pymysql` or `MySQLdb` (no hard dependency on any of them). An
+  `IntegrityError` (or a driver's `UniqueViolation`) whose message looks like a uniqueness violation (`unique constraint`,
   `duplicate key`, `duplicate entry`, `already exists`) maps to `DUPLICATE_RESOURCE` / 409;
   any other SQLAlchemy error maps to `DATABASE_ERROR` / 500.
+- `DjangoExceptionClassifier` (`django_native.py`, priority 190) — duck-typed (no Django import)
+  mapping of Django's own exceptions: `Http404`/`ObjectDoesNotExist` → 404, `PermissionDenied`
+  → 403, `SuspiciousOperation` → 400, `RequestDataTooBig`/`TooManyFieldsSent` → 413,
+  `django.core.exceptions.ValidationError` → `validation_status` (422 for Ninja, 400 for DRF, with
+  a flat `details` from `normalizers/django_validation.py`). Registered by the Ninja and DRF
+  adapters (not by the engine's defaults).
 - `GenericExceptionClassifier` (`generic.py`) — the engine's fallback, not part of the
   priority-sorted list.
 - `status_mapping.py` — `category_for_status_code(status_code)`, the shared HTTP-status-code →

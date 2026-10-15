@@ -12,6 +12,10 @@ from errium_core.contracts.categories import ErrorCategory
 from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.base import ErrorFormatter
 from errium_core.headers import protocol_headers
+from errium_core.normalizers.django_validation import (
+    flatten_django_validation_error,
+    is_django_validation_error,
+)
 from errium_core.tracing.trace import (
     TRACE_ID_HEADER,
     generate_trace_id,
@@ -118,6 +122,8 @@ def handle_error(
     try:
         classified = engine.classify(exc)
         resolved_details = details() if callable(details) else details
+        if resolved_details is None and is_django_validation_error(exc):
+            resolved_details = flatten_django_validation_error(exc)
         error = StandardizedError(
             status_code=classified.status_code,
             code=classified.category,

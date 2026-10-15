@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Ninja: a bare pydantic `ValidationError` raised from a view - typically Ninja validating the
+  endpoint's return value against its `response=` schema - is now `500 INTERNAL_SERVER_ERROR`
+  instead of `422 VALIDATION_ERROR`, since it is a server bug the client cannot fix. Request
+  validation (`ninja.errors.ValidationError`) is unchanged.
 - **Visible contract change (recommend 0.2.0).** `code` is now consistent with `status_code` for
   HTTP errors: 400 `BAD_REQUEST`, 405 `METHOD_NOT_ALLOWED`, 406 `NOT_ACCEPTABLE`, 408/504
   `TIMEOUT`, 409 `CONFLICT`, 410 `GONE`, 413 `PAYLOAD_TOO_LARGE`, 415 `UNSUPPORTED_MEDIA_TYPE`,
@@ -37,6 +41,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Django-native exceptions are classified on Ninja and DRF instead of collapsing to 500:
+  `PermissionDenied` -> 403, `SuspiciousOperation` -> 400 `BAD_REQUEST`,
+  `RequestDataTooBig`/`TooManyFieldsSent`/`TooManyFilesSent` -> 413 `PAYLOAD_TOO_LARGE`,
+  `django.core.exceptions.ValidationError` -> 422 (Ninja) / 400 (DRF) with a flat `details`
+  dict, `ObjectDoesNotExist` -> 404. New `errium_core.classifiers.django_native.DjangoExceptionClassifier`
+  (duck-typed, no Django import in the core).
+- `DatabaseExceptionClassifier` now recognises `django.db`, `sqlite3`, `psycopg`, `psycopg2`,
+  `asyncpg`, `pymysql` and `MySQLdb` exceptions (by module path, no hard imports) in addition to
+  SQLAlchemy: unique violations -> 409 `DUPLICATE_RESOURCE`, other errors -> `DATABASE_ERROR`.
 - Protocol headers on exceptions are preserved on the error response across adapters: `Allow`,
   `Retry-After`, `WWW-Authenticate`, `Location` and `Content-Range`, read from
   `exc.get_headers()`, `exc.headers` and `exc.response.headers`. Fixes Flask dropping

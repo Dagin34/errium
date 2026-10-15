@@ -3,6 +3,7 @@ from typing import Any
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 
+from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.pipeline import fallback_error, handle_error
@@ -20,6 +21,7 @@ _engine.register(DRFValidationErrorClassifier())
 _engine.register(DRFAPIExceptionClassifier())
 _engine.register(DjangoHttp404Classifier())
 _engine.register(DjangoPermissionDeniedClassifier())
+_engine.register(DjangoExceptionClassifier(validation_status=400))
 
 _formatter = DefaultFormatter()
 
