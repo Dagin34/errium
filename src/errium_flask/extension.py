@@ -1,13 +1,27 @@
-from flask import Flask, jsonify
+from flask import Flask, g, jsonify, request
 from flask.typing import ResponseReturnValue
 from pydantic import ValidationError as PydanticValidationError
 
+from errium_core.classifiers.base import ExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import fallback_error, handle_error
+from errium_core.tracing.trace import (
+    REQUEST_ID_HEADER,
+    resolve_trace_id,
+    set_current_trace_id,
+)
 from errium_flask.classifiers import WerkzeugHTTPExceptionClassifier
+
+
+def build_engine(
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> ClassificationEngine:
+    """Build a ClassificationEngine pre-loaded with the Flask/Werkzeug classifier."""
+    engine = ClassificationEngine(classifiers)
+    engine.register(WerkzeugHTTPExceptionClassifier())
+    return engine
 
 
 class ErriumFlask:
@@ -22,10 +36,14 @@ class ErriumFlask:
         errium.init_app(app)
     """
 
-    def __init__(self, app: Flask | None = None) -> None:
-        self.classification_engine = ClassificationEngine()
-        # Register Flask/Werkzeug classifier for high-priority handling
-        self.classification_engine.register(WerkzeugHTTPExceptionClassifier())
+    def __init__(
+        self,
+        app: Flask | None = None,
+        classifiers: list[ExceptionClassifier] | None = None,
+        engine: ClassificationEngine | None = None,
+    ) -> None:
+        """`classifiers` are added to the default engine; `engine` replaces it."""
+        self.classification_engine = engine or build_engine(classifiers)
 
         self.formatter = DefaultFormatter()
         self.normalizer = ValidationNormalizer()
@@ -41,27 +59,37 @@ class ErriumFlask:
         unhandled generic exceptions to it when no more specific handler
         is registered.
         """
+        app.before_request(self._assign_trace_id)
         app.register_error_handler(Exception, self._handle_exception)
 
+    @staticmethod
+    def _assign_trace_id() -> None:
+        """Expose the trace id as `flask.g.errium_trace_id` before the view runs."""
+        trace_id = resolve_trace_id(request.headers.get(REQUEST_ID_HEADER))
+        g.errium_trace_id = trace_id
+        set_current_trace_id(trace_id)
+
     def _handle_exception(self, exc: Exception) -> ResponseReturnValue:
-        trace_id = generate_trace_id()
-
-        classified = self.classification_engine.classify(exc)
-
         # Beautify raw pydantic validation errors into a flat field->message dict,
         # mirroring the FastAPI adapter's RequestValidationError handling.
         details = None
         if isinstance(exc, PydanticValidationError):
-            details = self.normalizer.normalize(exc.errors())
+            pydantic_exc = exc
 
-        error = StandardizedError(
-            status_code=classified.status_code,
-            code=classified.category,
-            message=classified.message,
-            trace_id=trace_id,
-            success=False,
+            def details() -> dict[str, str]:
+                return self.normalizer.normalize(pydantic_exc.errors())
+
+        handled = handle_error(
+            exc,
+            engine=self.classification_engine,
+            formatter=self.formatter,
             details=details,
-            exception=exc,
+            trace_id=g.get("errium_trace_id"),
+            method=request.method,
+            path=request.path,
         )
-
-        return jsonify(self.formatter.format(error)), classified.status_code
+        try:
+            return jsonify(handled.body), handled.status_code, handled.headers
+        except Exception:
+            generic = fallback_error(None, handled.trace_id)
+            return jsonify(generic.body), generic.status_code, generic.headers

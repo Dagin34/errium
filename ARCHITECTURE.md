@@ -40,7 +40,10 @@ follows this same pattern and reuses `errium_core` untouched.
 
 - `ErrorCategory` (`categories.py`) — the closed set of category strings every response's `code`
   field can take: `VALIDATION_ERROR`, `AUTHENTICATION_ERROR`, `AUTHORIZATION_ERROR`,
-  `RESOURCE_NOT_FOUND`, `DUPLICATE_RESOURCE`, `DATABASE_ERROR`, `INTERNAL_SERVER_ERROR`.
+  `RESOURCE_NOT_FOUND`, `DUPLICATE_RESOURCE`, `DATABASE_ERROR`, `INTERNAL_SERVER_ERROR`,
+  `BAD_REQUEST` (400), `METHOD_NOT_ALLOWED` (405), `NOT_ACCEPTABLE` (406), `TIMEOUT` (408/504),
+  `CONFLICT` (409), `GONE` (410), `PAYLOAD_TOO_LARGE` (413), `UNSUPPORTED_MEDIA_TYPE` (415),
+  `RATE_LIMITED` (429), `SERVICE_UNAVAILABLE` (502/503).
 - `ClassifiedError` (`classified_error.py`) — the minimal output of classification: `category`,
   `status_code`, `message`.
 - `StandardizedError` (`error.py`) — the full internal representation of an error before
@@ -60,24 +63,41 @@ follows this same pattern and reuses `errium_core` untouched.
   genuinely framework-agnostic. Adapters register their own higher-priority, framework-specific
   classifiers (priority 200+) on top of that.
 - `ValidationExceptionClassifier` (`validation.py`) — matches Pydantic `ValidationError` or
-  anything named `RequestValidationError`, always mapping to `VALIDATION_ERROR` / 422.
-- `DatabaseExceptionClassifier` (`database.py`) — matches SQLAlchemy exceptions by walking the
-  exception class's MRO for a `sqlalchemy.` module path (no SQLAlchemy dependency). An
-  `IntegrityError` whose message looks like a uniqueness violation (`unique constraint`,
+  anything named `RequestValidationError`, mapping to `VALIDATION_ERROR` / 422 — except when
+  every error is a `json_invalid` one (the body is not parseable JSON), which is
+  `BAD_REQUEST` / 400 "Malformed request body." on every adapter.
+- `DatabaseExceptionClassifier` (`database.py`) — matches database exceptions by walking the
+  exception class's MRO for a module path under `sqlalchemy`, `django.db`, `sqlite3`, `psycopg`,
+  `psycopg2`, `asyncpg`, `pymysql` or `MySQLdb` (no hard dependency on any of them). An
+  `IntegrityError` (or a driver's `UniqueViolation`) whose message looks like a uniqueness violation (`unique constraint`,
   `duplicate key`, `duplicate entry`, `already exists`) maps to `DUPLICATE_RESOURCE` / 409;
   any other SQLAlchemy error maps to `DATABASE_ERROR` / 500.
+- `DjangoExceptionClassifier` (`django_native.py`, priority 190) — duck-typed (no Django import)
+  mapping of Django's own exceptions: `Http404`/`ObjectDoesNotExist` → 404, `PermissionDenied`
+  → 403, `SuspiciousOperation` → 400, `RequestDataTooBig`/`TooManyFieldsSent` → 413,
+  `django.core.exceptions.ValidationError` → `validation_status` (422 for Ninja, 400 for DRF, with
+  a flat `details` from `normalizers/django_validation.py`). Registered by the Ninja and DRF
+  adapters (not by the engine's defaults).
 - `GenericExceptionClassifier` (`generic.py`) — the engine's fallback, not part of the
   priority-sorted list.
 - `status_mapping.py` — `category_for_status_code(status_code)`, the shared HTTP-status-code →
-  `ErrorCategory` table (401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND, 409→DUPLICATE,
-  422→VALIDATION, else→INTERNAL). `FastAPIHTTPExceptionClassifier`,
+  `ErrorCategory` table (400→BAD_REQUEST, 401→AUTHENTICATION, 403→AUTHORIZATION, 404→NOT_FOUND,
+  405→METHOD_NOT_ALLOWED, 406→NOT_ACCEPTABLE, 408→TIMEOUT, 409→CONFLICT, 410→GONE,
+  413→PAYLOAD_TOO_LARGE, 415→UNSUPPORTED_MEDIA_TYPE, 422→VALIDATION, 429→RATE_LIMITED,
+  502/503→SERVICE_UNAVAILABLE, 504→TIMEOUT; any other 4xx→BAD_REQUEST; any other status→INTERNAL).
+  A database uniqueness violation still produces `DUPLICATE_RESOURCE` / 409 via
+  `DatabaseExceptionClassifier`. `FastAPIHTTPExceptionClassifier`,
   `WerkzeugHTTPExceptionClassifier`, `NinjaHttpErrorClassifier`, and `DRFAPIExceptionClassifier`
   all use this so the mapping is defined once.
 
-Each adapter entry point (the FastAPI middleware, the FastAPI validation handler, the Flask
-extension, the Ninja registration function, the DRF exception handler) constructs its **own**
-`ClassificationEngine` instance rather than sharing one. A custom classifier meant to apply
-everywhere needs to be registered on each entry point.
+Custom classifiers: `errium_core/registry.py` holds a process-wide registry
+(`register(...)` / `register_classifier(...)`) that every `ClassificationEngine` merges in at
+classification time, so one registration applies to every adapter and entry point. Each adapter
+also takes `classifiers=` (added to its default engine) and `engine=` (replaces it); each package
+exposes `build_engine()` for the default. The FastAPI middleware, `HTTPException` handler and
+validation handler share one engine through `app.state.errium_engine`; DRF reads
+`settings.ERRIUM["CLASSIFIERS"]` (dotted paths, loaded by `classifiers/loader.py`) or accepts
+`make_exception_handler(engine=...)`.
 
 ### Formatting (`errium_core/formatters/`)
 
@@ -85,12 +105,22 @@ everywhere needs to be registered on each entry point.
 - `DefaultFormatter` (`default.py`) — the only implementation. Produces the response body:
   `success`, `status_code`, `code`, `message`, `trace_id`, `timestamp`, `details`. Reads
   `get_settings().debug`:
-  - In production (`debug=False`), any `status_code >= 500` has its `code`/`message` sanitized to
-    a generic `INTERNAL_SERVER_ERROR` / "An unexpected error occurred." regardless of what the
-    classifier produced, so internals never leak to clients.
+  - In production (`debug=False`), any `status_code >= 500` has its message and `details`
+    replaced by a generic text, so internals never leak to clients. 502/503/504 keep their
+    `SERVICE_UNAVAILABLE`/`TIMEOUT` code with a generic message for that category; every other
+    5xx collapses to `INTERNAL_SERVER_ERROR` / "An unexpected error occurred.".
   - In debug mode (`debug=True`), a `debug` block is added with the exception class name, its
     message, a full formatted stack trace, and a short list of contextual hints keyed off the
     status code (e.g. "Check the 'details' field..." for 422).
+
+### Size limits (`errium_core/limits.py`)
+
+`DefaultFormatter` bounds every response: `details` ≤ 50 entries (keys ≤ 200 chars, string
+values ≤ 500) plus a `"_truncated": "N more"` sentinel only when something was dropped;
+`debug.message` ≤ 2,000 chars; `debug.stack_trace` ≤ 20,000 (tail kept). For validation errors
+(anything with an `errors()` list of `loc`/`msg`/`type`) the debug message and the stack trace's
+final line are rebuilt from those three keys only, so submitted `input`/`ctx` values never echo
+back.
 
 ### Normalization (`errium_core/normalizers/validation.py`)
 
@@ -112,30 +142,59 @@ below.
 
 ### Settings (`errium_core/config/settings.py`)
 
-`ErriumSettings(debug: bool)` is a process-global singleton, sourced from the `ERRIUM_DEBUG`
-env var at import time (`"true"`/`"1"`/`"yes"`, case-insensitive). `get_settings()` /
+`ErriumSettings(debug, trust_request_id)` is a process-global singleton, sourced by
+`load_settings()` from `ERRIUM_DEBUG` / `ERRIUM_TRUST_REQUEST_ID` at import time (`true`/`1`/`yes`/
+`on`, case-insensitive, whitespace stripped). `announce_mode()` logs the mode once at import. `get_settings()` /
 `set_settings()` read and replace it. Tests mutate this directly via `set_settings(...)`; because
 it's a module-level singleton, tests that rely on a specific debug/production mode should set it
 explicitly rather than assuming a default.
 
 ### Tracing (`errium_core/tracing/trace.py`)
 
-`generate_trace_id()` returns a fresh `uuid4()` string per error, used to correlate the
-client-facing response with server-side logs.
+`generate_trace_id()` returns a fresh `uuid4()` string per error. `resolve_trace_id(request_id)`
+picks the id for a request: a fresh uuid4 by default, or — only when `ERRIUM_TRUST_REQUEST_ID` is
+on and the inbound `X-Request-ID` is ≤128 characters of `[A-Za-z0-9._:-]` — that header's value.
+`current_trace_id()` returns the id of the request being handled (a `ContextVar`), so a logging
+filter or application code can attach it to its own log lines. Adapters assign the id once per
+request and expose it as `request.state.errium_trace_id` (FastAPI), `flask.g.errium_trace_id`
+(Flask) or `request.errium_trace_id` (Django Ninja / DRF).
+
+### Protocol headers (`errium_core/headers.py`)
+
+`protocol_headers(exc)` collects an allow-list (`Allow`, `Retry-After`, `WWW-Authenticate`,
+`Location`, `Content-Range`) from `exc.get_headers()` (Werkzeug), `exc.headers` and
+`exc.response.headers`, rejecting values containing CR/LF. `handle_error` merges them into the
+response headers, so Werkzeug's `Retry-After`/`Allow` and any `headers` attribute on a Ninja
+`HttpError` subclass survive. Headers passed explicitly by an adapter win.
+
+### Pipeline and logging (`errium_core/pipeline.py`)
+
+`handle_error(exc, engine=..., formatter=..., details=..., headers=..., trace_id=...)` is the
+single classify → format path every adapter calls. It never raises (a failure anywhere yields a
+generic 500 envelope with a fresh `trace_id`), adds an `X-Trace-Id` response header, and logs the
+exception on the `errium` logger: `ERROR` with the traceback for status ≥ 500, `WARNING` (one
+line, no traceback) otherwise — each message carries the method, path, status, category and
+`trace_id`. Errium never configures logging handlers; attach your own to the `errium` logger.
 
 ## Adapter: FastAPI (`errium`)
 
-Two independent entry points exist because Starlette resolves `RequestValidationError`
-differently from other exceptions:
+`errium.install(app)` wires all of the following in one call (and is safe on mounted sub-apps —
+call it for each one). Three entry points exist because Starlette resolves `RequestValidationError`
+and `HTTPException` *inside* user middleware, differently from other exceptions:
 
 1. **`ErriumMiddleware`** (`middleware/error_middleware.py`) — a Starlette `BaseHTTPMiddleware`
    that wraps `call_next` in try/except, catching anything that escapes normal request handling
    (uncaught exceptions and `HTTPException`s). Registers `FastAPIHTTPExceptionClassifier`
    (priority 200) and `FastAPIValidationErrorClassifier` (priority 210).
-2. **`validation_exception_handler`** (`handlers/validation_handler.py`) — registered separately
+2. **`http_exception_handler`** (`handlers/http_handler.py`) — registered for
+   `starlette.exceptions.HTTPException`. Starlette's `ExceptionMiddleware` turns `HTTPException`
+   (including the router's 404/405) into a response before `ErriumMiddleware` can see it, so this
+   handler is what makes `FastAPIHTTPExceptionClassifier` reachable. It preserves `exc.headers`
+   and flattens a dict/list `detail` into `details`.
+3. **`validation_exception_handler`** (`handlers/validation_handler.py`) — registered separately
    via `app.add_exception_handler(RequestValidationError, ...)`, because FastAPI resolves
    `RequestValidationError` through its own exception-handler mechanism rather than letting it
-   propagate through middleware. It builds its own `ClassificationEngine`, classifies the error,
+   propagate through middleware. It classifies the error with the app's shared engine (`app.state.errium_engine`),
    and additionally runs `ValidationNormalizer` on `exc.errors()` to produce beautified `details`.
 
 `errium/classifiers.py` holds `FastAPIHTTPExceptionClassifier` (matches
@@ -245,14 +304,32 @@ object:
   one field's messages or per-item errors on a `many=True` serializer) into the same flat
   `{field_path: message}` shape the other adapters produce — no template-mapping needed since
   DRF's `ErrorDetail` strings are already human-readable. Multiple messages for one field are
-  joined with a space; non-field errors (a bare list with no dict wrapper) land under
-  `"non_field_errors"`.
+  joined with `"; "`; non-field errors (a bare list with no dict wrapper, or DRF's own
+  `non_field_errors` key at any depth) land under `"_"` (`"address._"` when nested), so DRF's
+  internal key name does not leak.
 - **Auth/throttle headers**: `APIView.handle_exception` sets `exc.auth_header` (for
   `NotAuthenticated`/`AuthenticationFailed`, when an authenticator is configured) and `exc.wait`
   (for `Throttled`) on the exception *before* calling the exception handler.
   `errium_exception_handler` reads those and sets `WWW-Authenticate`/`Retry-After` response
   headers, mirroring what DRF's own default handler does — otherwise a 401 challenge response
   would be missing the header clients rely on to know how to authenticate.
+
+## Django helpers (`errium_django`)
+
+Not an exception-handling adapter in the sense of the others (it has no registration call): it
+covers what happens *outside* a Ninja/DRF view, which those adapters cannot see.
+- `handler400/403/404/500` (`handlers.py`) — URLconf handlers rendering the JSON envelope when
+  `negotiation.wants_json(request)` (client prefers JSON via `Accept`, or the path matches
+  `ERRIUM_JSON_PATH_PREFIXES`, default `["/api/"]`), else delegating to `django.views.defaults`.
+  `handler500` reads the exception from `sys.exc_info()` (Django calls it inside its `except`).
+  A `Resolver404` gets a fixed message because Django's lists every URL pattern it tried.
+- `ErriumDjangoMiddleware` (`middleware.py`) — assigns the trace id up front, converts
+  `process_exception` hits from plain views, replaces the bare 500 page Django makes from
+  *later* middleware's exceptions (it records them via the `got_request_exception` signal, since
+  Django wraps each middleware layer in its own `convert_exception_to_response`), and turns
+  `HttpResponseNotAllowed` into a 405 envelope with the `Allow` header.
+- It builds its own engine (`DjangoExceptionClassifier` + `Resolver404Classifier`) and depends
+  only on `errium_core` and Django.
 
 ## Response contract
 

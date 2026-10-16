@@ -1,6 +1,7 @@
 from django.http import Http404
 from ninja.errors import HttpError
 from ninja.errors import ValidationError as NinjaValidationError
+from pydantic import ValidationError as PydanticValidationError
 
 from errium_core.classifiers.status_mapping import category_for_status_code
 from errium_core.contracts.categories import ErrorCategory
@@ -22,6 +23,33 @@ class NinjaValidationErrorClassifier:
             category=ErrorCategory.VALIDATION,
             status_code=422,
             message="Validation failed.",
+        )
+
+
+class NinjaResponseValidationClassifier:
+    @property
+    def priority(self) -> int:
+        """Above the core's generic pydantic ValidationError classifier."""
+        return 215
+
+    def classify(self, exc: Exception) -> ClassifiedError | None:
+        """A bare pydantic ValidationError inside a Ninja view is a server bug.
+
+        Ninja reports bad *requests* as `ninja.errors.ValidationError`. A raw
+        pydantic `ValidationError` surfacing from a view - most commonly Ninja
+        validating the endpoint's own return value against its `response=`
+        schema - means the server produced invalid data, so blaming the client
+        with a 422 would be wrong: it is a 500.
+        """
+        if isinstance(exc, NinjaValidationError) or not isinstance(
+            exc, PydanticValidationError
+        ):
+            return None
+
+        return ClassifiedError(
+            category=ErrorCategory.INTERNAL,
+            status_code=500,
+            message="Response validation failed.",
         )
 
 

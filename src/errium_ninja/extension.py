@@ -5,14 +5,17 @@ from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.errors import ValidationError as NinjaValidationError
 
+from errium_core.classifiers.base import ExceptionClassifier
+from errium_core.classifiers.django_native import DjangoExceptionClassifier
 from errium_core.classifiers.engine import ClassificationEngine
-from errium_core.contracts.error import StandardizedError
 from errium_core.formatters.default import DefaultFormatter
 from errium_core.normalizers.validation import ValidationNormalizer
-from errium_core.tracing.trace import generate_trace_id
+from errium_core.pipeline import fallback_error, handle_error
+from errium_core.tracing.trace import resolve_trace_id, set_current_trace_id
 from errium_ninja.classifiers import (
     DjangoHttp404Classifier,
     NinjaHttpErrorClassifier,
+    NinjaResponseValidationClassifier,
     NinjaValidationErrorClassifier,
 )
 
@@ -37,7 +40,35 @@ def _flatten_ninja_errors(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return flattened
 
 
-def register_errium(api: NinjaAPI) -> None:
+def _request_trace_id(request: HttpRequest) -> str:
+    """Assign the request's trace id once; exposed as `request.errium_trace_id`."""
+    existing = getattr(request, "errium_trace_id", None)
+    if isinstance(existing, str):
+        return existing
+    trace_id = resolve_trace_id(request.META.get("HTTP_X_REQUEST_ID"))
+    request.errium_trace_id = trace_id
+    set_current_trace_id(trace_id)
+    return trace_id
+
+
+def build_engine(
+    classifiers: list[ExceptionClassifier] | None = None,
+) -> ClassificationEngine:
+    """Build a ClassificationEngine pre-loaded with the Ninja/Django classifiers."""
+    engine = ClassificationEngine(classifiers)
+    engine.register(NinjaValidationErrorClassifier())
+    engine.register(NinjaHttpErrorClassifier())
+    engine.register(DjangoHttp404Classifier())
+    engine.register(NinjaResponseValidationClassifier())
+    engine.register(DjangoExceptionClassifier(validation_status=422))
+    return engine
+
+
+def register_errium(
+    api: NinjaAPI,
+    classifiers: list[ExceptionClassifier] | None = None,
+    engine: ClassificationEngine | None = None,
+) -> None:
     """Register Errium's exception handlers on a NinjaAPI instance.
 
     Overrides Ninja's built-in default handlers for ValidationError, HttpError,
@@ -48,37 +79,41 @@ def register_errium(api: NinjaAPI) -> None:
     returns a standardized JSON response, deferring to Errium's own
     `ERRIUM_DEBUG` setting for sanitization.
     """
-    engine = ClassificationEngine()
-    engine.register(NinjaValidationErrorClassifier())
-    engine.register(NinjaHttpErrorClassifier())
-    engine.register(DjangoHttp404Classifier())
+    # `classifiers` extend the default engine; `engine` replaces it.
+    engine = engine or build_engine(classifiers)
 
     formatter = DefaultFormatter()
     normalizer = ValidationNormalizer()
 
     def _handle_exception(request: HttpRequest, exc: Exception) -> HttpResponse:
-        trace_id = generate_trace_id()
-        classified = engine.classify(exc)
-
         # Beautify Ninja's raw validation errors into a flat field->message dict,
         # mirroring the FastAPI and Flask adapters.
         details = None
         if isinstance(exc, NinjaValidationError):
-            details = normalizer.normalize(_flatten_ninja_errors(exc.errors))
+            ninja_exc = exc
 
-        error = StandardizedError(
-            status_code=classified.status_code,
-            code=classified.category,
-            message=classified.message,
-            trace_id=trace_id,
-            success=False,
+            def details() -> dict[str, str]:
+                return normalizer.normalize(_flatten_ninja_errors(ninja_exc.errors))
+
+        handled = handle_error(
+            exc,
+            engine=engine,
+            formatter=formatter,
             details=details,
-            exception=exc,
+            trace_id=_request_trace_id(request),
+            method=request.method,
+            path=request.path,
         )
-
-        return api.create_response(
-            request, formatter.format(error), status=classified.status_code
-        )
+        try:
+            response = api.create_response(
+                request, handled.body, status=handled.status_code
+            )
+        except Exception:
+            handled = fallback_error(None, handled.trace_id)
+            response = api.create_response(request, handled.body, status=500)
+        for name, value in handled.headers.items():
+            response[name] = value
+        return response
 
     api.exception_handler(Exception)(_handle_exception)
     api.exception_handler(Http404)(_handle_exception)

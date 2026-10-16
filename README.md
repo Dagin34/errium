@@ -56,7 +56,11 @@ The base install ships the core plus the FastAPI adapter. Each other framework i
 uv pip install "errium[flask]"   # Flask
 uv pip install "errium[ninja]"   # Django Ninja
 uv pip install "errium[drf]"     # Django REST Framework
+uv pip install "errium[django]"  # errium_django helpers only (error pages outside Ninja/DRF)
 ```
+
+> **Note:** the base install requires `fastapi`/`starlette`, so the Flask, Ninja and DRF extras
+> install them too. Their adapters never import FastAPI at runtime; it is install footprint only.
 
 > **Note:** Errium depends on `fastapi`, not `fastapi[standard]`, so it stays light for Flask and
 > Django users. If you were relying on Errium to pull in a server, install one yourself
@@ -68,24 +72,44 @@ All five packages ship a `py.typed` marker, so type checkers see Errium's annota
 
 ## 🛠️ Usage Example
 
-Integrating Errium into your FastAPI codebase takes less than two lines:
+Integrating Errium into your FastAPI codebase takes one line:
 
 ```python
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from errium import ErriumMiddleware
-from errium.handlers.validation_handler import validation_exception_handler
+import errium
 
 app = FastAPI()
 
-# 1. Add Middleware to catch raw & HTTP exceptions
-app.add_middleware(ErriumMiddleware)
-
-# 2. Add validation exception handler to capture validation errors
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+# Adds the middleware (uncaught exceptions) and registers handlers for
+# HTTPException (including routing 404/405) and request validation errors.
+errium.install(app)
 
 # Your endpoints go here...
 ```
+
+`errium.install(app)` is equivalent to the manual wiring below, which still works but also needs
+the `HTTPException` handler to normalise `HTTPException`s (Starlette resolves those *inside*
+user middleware, so the middleware alone never sees them):
+
+```python
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException
+from errium import ErriumMiddleware
+from errium.handlers.http_handler import http_exception_handler
+from errium.handlers.validation_handler import validation_exception_handler
+
+app.add_middleware(ErriumMiddleware)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+```
+
+**Mounted sub-apps** (`app.mount("/v1", v1_app)`) do not inherit the parent's middleware or
+handlers: call `errium.install(v1_app)` on each mounted app.
+
+A structured `HTTPException(detail={...})` / `detail=[...]` keeps `message` as the HTTP phrase
+(e.g. "Bad Request") and exposes the value in `details` (dict entries as `{key: str(value)}`, list
+items as `{"0": ..., "1": ...}`). Headers set on the exception (`Retry-After`, `WWW-Authenticate`,
+`X-*`) are preserved.
 
 Flask is supported too, via the `errium[flask]` extra:
 
@@ -143,6 +167,118 @@ That's it — every exception raised inside a DRF view (`APIException` family, D
 `PermissionDenied`, and any other uncaught exception) now returns Errium's standardized response.
 Note: validation errors keep DRF's own `400` status code rather than the `422` the other adapters
 use, matching DRF's established convention.
+
+### Configuration
+
+| Variable | Effect |
+|---|---|
+| `ERRIUM_DEBUG` | `true`/`1`/`yes`/`on` (case-insensitive, whitespace ignored) adds a `debug` block and stops sanitizing 5xx messages. Anything else stays off. The mode is logged once at import (INFO on the `errium` logger), with a WARNING if debug is on while `ERRIUM_ENV`/`APP_ENV`/`ENVIRONMENT`/`ENV` says production. |
+| `ERRIUM_TRUST_REQUEST_ID` | Reuse a valid inbound `X-Request-ID` as the `trace_id`. |
+
+`errium.__version__` (and `errium_core`, `errium_flask`, `errium_ninja`, `errium_drf`,
+`errium_django`) report the installed version.
+
+### FastAPI middleware order (CORS)
+
+Starlette runs middleware in reverse order of registration: the one added **last** is outermost.
+Add `CORSMiddleware` **after** Errium so it wraps it; otherwise an uncaught-exception 500 is
+produced *outside* CORS and the browser reports a CORS failure instead of showing the JSON body.
+
+```python
+errium.install(app)                    # adds ErriumMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["https://app.example.com"])  # after
+```
+
+### Known limitations
+
+- **Mid-stream failures cannot be normalized.** If a `StreamingResponse` /
+  `StreamingHttpResponse` generator raises after the first chunk, the status line and headers
+  are already sent; the connection just ends. A generator failing *before* its first byte on
+  FastAPI still returns the 200 it started with. Validate and fetch what you can before
+  returning a streaming response.
+- Mounted FastAPI sub-apps need their own `errium.install(sub_app)`.
+- For Django, errors raised before Django middleware runs (or when `DEBUG = True`) may still
+  render Django's own page; see "Django project setup" above.
+
+### Custom classifiers
+
+Map your own exception types to a status, category and message. The one-liner works on every
+adapter at once (it is a process-wide registry consulted by all engines):
+
+```python
+import errium
+
+class OutOfStock(Exception): ...
+
+errium.register(OutOfStock, status=409, message="That item is out of stock.")
+
+# or, as a class decorator (category defaults to the standard one for the status):
+@errium.register(status=429, category="RATE_LIMITED")
+class SlowDown(Exception): ...
+```
+
+For full control, write a classifier (`priority` property + `classify(exc) -> ClassifiedError | None`)
+and pass it to the adapter. Higher priority runs first; built-in adapter classifiers are 200+,
+`register(...)` uses 300.
+
+| Adapter | How to pass classifiers |
+|---|---|
+| FastAPI | `errium.install(app, classifiers=[...])`, or `app.add_middleware(ErriumMiddleware, classifiers=[...])` |
+| Flask | `ErriumFlask(app, classifiers=[...])` |
+| Django Ninja | `register_errium(api, classifiers=[...])` |
+| DRF | `REST_FRAMEWORK["EXCEPTION_HANDLER"] = "errium_drf.errium_exception_handler"` plus `ERRIUM = {"CLASSIFIERS": ["myapp.errors.QuotaClassifier"]}`, or `make_exception_handler(classifiers=[...])` |
+| errium_django | `ERRIUM = {"CLASSIFIERS": [...]}` in Django settings |
+
+Every adapter also takes `engine=` to replace the default `ClassificationEngine` outright
+(`build_engine(...)` in each adapter package builds the default one). On FastAPI, one engine is
+shared by the middleware and both exception handlers.
+
+### Trace IDs and logging
+
+Every error response carries a `trace_id` (also sent as an `X-Trace-Id` response header), and
+Errium logs each handled exception on the `"errium"` logger — `ERROR` with the traceback for 5xx,
+a one-line `WARNING` for 4xx — with that same `trace_id` in the message, so a client-reported id
+can be matched to a log line. Errium never configures logging handlers; attach your own:
+
+```python
+import logging
+logging.getLogger("errium").addHandler(logging.StreamHandler())
+```
+
+To use the id in your own code: `request.state.errium_trace_id` (FastAPI), `flask.g.errium_trace_id`
+(Flask), `request.errium_trace_id` (Django Ninja / DRF), or `errium_core.tracing.current_trace_id()`
+anywhere in the request's context. Set `ERRIUM_TRUST_REQUEST_ID=true` to reuse a valid inbound
+`X-Request-ID` (≤128 characters of letters, digits and `._:-`) as the `trace_id`; by default a
+fresh uuid4 is generated.
+
+### Django project setup: errors outside the view layer
+
+Ninja's and DRF's handlers only see exceptions raised *inside* their views. An unknown URL, a URL
+converter mismatch (`/item/abc/` for `<int:pk>`), Ninja's own 405, and an exception in a Django
+middleware are rendered by Django itself as HTML. Cover them with the `errium_django` helpers
+(`pip install "errium[django]"`, or the `ninja`/`drf` extras):
+
+```python
+# urls.py (root URLconf)
+handler400 = "errium_django.handler400"
+handler403 = "errium_django.handler403"
+handler404 = "errium_django.handler404"
+handler500 = "errium_django.handler500"
+
+# settings.py
+MIDDLEWARE = [
+    "errium_django.ErriumDjangoMiddleware",  # first, so it wraps everything below
+    # ...
+]
+ERRIUM_JSON_PATH_PREFIXES = ["/api/"]  # optional; this is the default
+```
+
+A request gets the JSON envelope only if it prefers JSON (`Accept: application/json`) or its path
+starts with one of `ERRIUM_JSON_PATH_PREFIXES`; browsers and other HTML clients still get Django's
+normal error pages. `ErriumDjangoMiddleware` also converts exceptions raised by *later* middleware
+and plain Django views, and turns a bare 405 (Ninja's method check) into the envelope while keeping
+its `Allow` header. Exceptions in middleware listed *before* it are only covered by
+`handler500`. Django's technical 500 page replaces `handler500` while `DEBUG = True`.
 
 ---
 
